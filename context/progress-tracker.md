@@ -4,28 +4,34 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 1 — Foundation & Specs (COMPLETED)
+- Phase 2 — Backend Foundation (COMPLETED)
 
 ## Current Goal
 
-- Begin Phase 2 in `plan.md`: Backend Foundation (NestJS modules, Prisma migrations, auth & RBAC guards, REST endpoints, audit logging, and frontend login scaffolding).
+- Begin Phase 3 in `plan.md`: Telegram Bots (Student Telegram Bot, Staff Telegram Bot, Telegram ID authorization, and privacy-safe group notifications).
 
 ## Completed
 
-- Monorepo scaffold initialized with pnpm workspaces (`apps/backend`, `apps/frontend`, `packages/types`), root `package.json`, `.gitignore`, and base strict TypeScript configuration (`tsconfig.base.json`).
-- `@psychology/types` package created and verified with full domain types (`UserRole`, `ConversationStatus`, `SenderType`, `ConversationCategory`), entities (`User`, `Conversation`, `Message`, `AuditLog`), pagination types, API contracts, and SSE event schemas.
-- PostgreSQL Prisma schema created in `apps/backend/prisma/schema.prisma` with all required indexes (`telegramId`, `status`, `studentId`, `lastMessageAt`, `conversationId`, `createdAt`, `actorId, createdAt`, `targetId`) and validated via `prisma validate`.
-- API contract & auth design documented in `context/api-contract-and-auth.md`.
-- Telegram bot state flows for both student and staff bots documented in `context/telegram-state-flows.md`.
-- Frontend Next.js App Router route structure confirmed.
+- **Phase 1 — Foundation & Specs**: Monorepo pnpm workspaces, strict TypeScript bases, `@psychology/types`, PostgreSQL Prisma schema with required indexes, API contract & auth design, Telegram state flows spec.
+- **Phase 2 — Backend Foundation**:
+  - NestJS modular backend established (`apps/backend`): `database`, `common`, `audit`, `users`, `auth`, `conversations`, `messages`, `notifications`, `realtime`, `statistics`.
+  - Database service (`PrismaService`) initialized and Prisma client generated.
+  - Staff authentication via `AuthService` and `AuthController` issuing secure `HttpOnly` JWT cookie (`POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`).
+  - Server-side RBAC & ownership protection via `JwtAuthGuard`, `RolesGuard`, and `ConversationOwnershipGuard` (throwing 404 on unowned conversations to prevent student IDOR and case enumeration).
+  - Core CRUD REST endpoints implemented with strict DTO validation (`class-validator` / `class-transformer`): `/api/conversations`, `/api/conversations/:id/messages`, `/api/statistics`.
+  - Privacy-preserving audit logging (`AuditService`) strictly filtering and stripping any sensitive message content before persistence.
+  - Realtime SSE stream (`GET /api/events`) and health endpoint (`GET /api/health`).
+  - Unit tests implemented with Jest verifying zero message leakage in audit logs, IDOR ownership prevention, and auth logic (all 3 test suites passed).
+  - Frontend (`apps/frontend`): Next.js App Router scaffolded with Tailwind CSS design tokens from `ui-context.md`, typed API client, and calm, accessible staff login page (`/login`) with React Hook Form + Zod.
+  - Clean builds verified across the monorepo (`pnpm run build` exits with code 0).
 
 ## In Progress
 
-- None (Phase 1 complete, waiting to start Phase 2).
+- None (Phase 2 complete, waiting to start Phase 3).
 
 ## Next Up
 
-- Phase 2 — Backend Foundation (see `plan.md`)
+- Phase 3 — Telegram Bots (see `plan.md`)
 
 ## Open Questions & Resolved Defaults
 
