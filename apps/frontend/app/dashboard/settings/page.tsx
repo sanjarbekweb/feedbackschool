@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: () =>
-      apiClient<{ id: string; email: string; role: string; telegramId?: string }>(
+      apiClient<{ id: string; email?: string | null; role: string; telegramId?: string | null }>(
         '/api/auth/me',
       ),
   });

@@ -31,23 +31,20 @@ import { LoggerModule } from 'nestjs-pino';
             : undefined,
         serializers: {
           req(req) {
-            // Strip sensitive student communication and auth bodies
-            const rawBody = (req.raw as any)?.body;
-            let safeBody = undefined;
-            if (rawBody && typeof rawBody === 'object') {
-              safeBody = { ...rawBody };
-              delete safeBody.content;
-              delete safeBody.initialMessage;
-              delete safeBody.password;
-            }
+            // Request bodies and headers may contain credentials, cookies,
+            // Telegram updates, or sensitive student communication. They are
+            // deliberately excluded rather than maintained through a denylist.
             return {
               id: req.id,
               method: req.method,
               url: req.url,
               query: req.query,
               params: req.params,
-              body: safeBody,
             };
+          },
+          res(res) {
+            // Never serialize response headers: Set-Cookie contains the JWT.
+            return { statusCode: res.statusCode };
           },
         },
       },

@@ -6,6 +6,9 @@ import { LoginDto } from './dto/login.dto';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcryptjs';
 
+const INVALID_CREDENTIAL_HASH =
+  '$2a$12$ESQ9vA5u/DHWvRGpft80beC4wB36MvG0N1Nai2U.MR0BSNeUyTYSO';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -15,51 +18,26 @@ export class AuthService {
   ) {}
 
   async validateStaffLogin(dto: LoginDto): Promise<{ user: CurrentUser; token: string }> {
-    const { email, password } = dto;
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    const passwordMatches = await bcrypt
+      .compare(dto.password, user?.passwordHash ?? INVALID_CREDENTIAL_HASH)
+      .catch(() => false);
 
-    // Look for staff or admin user by email (stored in studentIdentifier/email convention) or seed user
-    let user = await this.prisma.user.findFirst({
-      where: {
-        role: { in: [UserRole.STAFF, UserRole.ADMIN] },
-        studentIdentifier: email,
-      },
-    });
-
-    // Default bootstrap staff user support for local development and testing
-    const defaultEmail = process.env.DEFAULT_STAFF_EMAIL || 'staff@school.edu';
-    const defaultPassword = process.env.DEFAULT_STAFF_PASSWORD || 'SchoolPsychology2026!';
-
-    if (!user && email === defaultEmail) {
-      // Upsert default bootstrap staff user
-      user = await this.prisma.user.upsert({
-        where: { telegramId: 'bootstrap-staff-001' },
-        update: {
-          role: UserRole.STAFF,
-          studentIdentifier: defaultEmail,
-        },
-        create: {
-          telegramId: 'bootstrap-staff-001',
-          role: UserRole.STAFF,
-          studentIdentifier: defaultEmail,
-        },
-      });
-    }
-
-    if (!user) {
+    if (
+      !user ||
+      !passwordMatches ||
+      !user.isActive ||
+      (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)
+    ) {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
-    // Validate password (supports bcrypt hash or default fallback in development)
-    const isDefaultMatch = email === defaultEmail && password === defaultPassword;
-    if (!isDefaultMatch) {
-      // If a password hash is stored in user metadata or future table, check bcrypt
-      const isMatch = await bcrypt.compare(password, '$2b$10$dummyHashToPreventTimingAttack00000000000000000000000').catch(() => false);
-      if (!isMatch) {
-        throw new UnauthorizedException('Invalid email or password.');
-      }
-    }
-
-    const payload = { sub: user.id, role: user.role };
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      credentialVersion: user.credentialVersion,
+    };
     const token = this.jwtService.sign(payload);
 
     await this.auditService.record({
@@ -74,6 +52,7 @@ export class AuthService {
       user: {
         id: user.id,
         telegramId: user.telegramId,
+        email: user.email,
         role: user.role,
         studentIdentifier: user.studentIdentifier,
       },

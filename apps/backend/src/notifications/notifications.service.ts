@@ -72,7 +72,7 @@ export class NotificationsService {
    * Dispatches a notification to the student when a staff response is submitted.
    */
   async notifyStudentResponse(studentTelegramId: string, caseId: string): Promise<void> {
-    this.logger.log(`[Student Notification] studentTelegramId=${studentTelegramId} Case=${caseId} Response available`);
+    this.logger.log(`[Student Notification] Case=${caseId} Response available`);
 
     const messageText =
       `📩 *You have received a response from the psychology staff regarding Case ${caseId}.*\n\n` +

@@ -47,7 +47,7 @@
 ### Database Schema (minimum)
 
 **users**
-`id, telegramId, role (STUDENT | STAFF | ADMIN), studentIdentifier, createdAt, updatedAt`
+`id, telegramId (nullable for web-only staff), email (normalized, nullable for students), passwordHash (staff only), role (STUDENT | STAFF | ADMIN), isActive, credentialVersion, studentIdentifier, createdAt, updatedAt`
 
 **conversations** (a.k.a. "cases")
 `id, caseId, studentId, status (UNANSWERED | IN_PROGRESS | ANSWERED | CLOSED), category, createdAt, updatedAt, lastMessageAt`
@@ -87,6 +87,9 @@ GET    /api/events                     (SSE stream for realtime updates)
 
 - Staff sign in to the web dashboard via secure, HTTP-only,
   session/JWT-based authentication.
+- Staff web identities use a dedicated normalized email and bcrypt password hash.
+  Plaintext passwords and bootstrap/default credentials are never stored or
+  accepted. `credentialVersion` invalidates existing JWTs when credentials change.
 - Telegram users (students and staff) are identified by their
   immutable Telegram user ID — never by username.
 - Every user has a role: `STUDENT`, `STAFF`, or `ADMIN`, stored on

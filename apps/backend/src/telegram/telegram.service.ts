@@ -44,20 +44,19 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     this.isWebhookMode = mode.toLowerCase() === 'webhook';
 
-    // Auto-bootstrap configured admin Telegram IDs
-    const adminIds = (
-      this.configService.get<string>('ADMIN_TELEGRAM_IDS') || '8264201735'
-    )
+    // Synchronize only explicitly configured admin Telegram IDs. There is no
+    // built-in fallback identity: production authorization must fail closed.
+    const adminIds = (this.configService.get<string>('ADMIN_TELEGRAM_IDS') ?? '')
       .split(',')
       .map((id) => id.trim())
-      .filter((id) => id.length > 0);
+      .filter((id) => /^\d+$/.test(id));
 
-    for (const adminId of adminIds) {
+    for (const [index, adminId] of adminIds.entries()) {
       try {
         await this.usersService.ensureStaffUser(adminId, UserRole.ADMIN);
-        this.logger.log(`Ensured Telegram ID ${adminId} is registered with ADMIN role.`);
-      } catch (err: any) {
-        this.logger.warn(`Could not bootstrap admin Telegram ID ${adminId}: ${err.message}`);
+        this.logger.log(`Configured Telegram admin identity ${index + 1} synchronized.`);
+      } catch {
+        this.logger.warn(`Could not synchronize configured Telegram admin identity ${index + 1}.`);
       }
     }
 
@@ -69,7 +68,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         });
       } else {
         this.logger.debug(
-          `[Telegram Notification Mock] Staff Group (${staffGroupId || 'not set'}):\n${formattedText}`,
+          `[Telegram Notification Mock] Staff Group (${staffGroupId ? 'configured' : 'not configured'}):\n${formattedText}`,
         );
       }
     });
@@ -85,7 +84,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           });
         } else {
           this.logger.debug(
-            `[Telegram Notification Mock] Student (${studentTelegramId}) Case ${caseId}:\n${messageText}`,
+            `[Telegram Notification Mock] Student notification for Case ${caseId}`,
           );
         }
       },

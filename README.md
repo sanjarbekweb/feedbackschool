@@ -75,6 +75,8 @@ pnpm test
    - `CORS_ORIGIN` (your Vercel frontend URL, e.g. `https://feedbackschool.vercel.app`)
    - `STUDENT_BOT_TOKEN` & `STAFF_BOT_TOKEN` (from @BotFather)
    - `STAFF_GROUP_ID` (Telegram group ID for triage notifications)
+   - `ADMIN_TELEGRAM_IDS` (optional comma-separated, explicitly approved IDs;
+     there is no default administrator ID)
    - `TELEGRAM_MODE=webhook`
    - `TELEGRAM_WEBHOOK_URL=https://<your-backend>.up.railway.app`
    - `TELEGRAM_WEBHOOK_SECRET` (alphanumeric secret token)

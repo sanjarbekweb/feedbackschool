@@ -152,7 +152,7 @@ export class MessagesService {
     });
 
     // If staff responded, notify student via Telegram
-    if (isStaffReply && conversation.student) {
+    if (isStaffReply && conversation.student.telegramId) {
       await this.notificationsService.notifyStudentResponse(
         conversation.student.telegramId,
         conversation.caseId,

@@ -36,8 +36,12 @@ enum ConversationCategory {
 
 model User {
   id                String         @id @default(uuid())
-  telegramId        String         @unique
+  telegramId        String?        @unique
+  email              String?        @unique
+  passwordHash       String?
   role              UserRole       @default(STUDENT)
+  isActive           Boolean        @default(true)
+  credentialVersion Int            @default(1)
   studentIdentifier String?        // Anonymized student code e.g. "S-8492"
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
@@ -84,6 +88,7 @@ model Message {
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+  @@index([senderId])
   @@index([createdAt])
   @@map("messages")
 }

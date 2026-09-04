@@ -44,8 +44,10 @@ export type ConversationCategory = (typeof ConversationCategory)[keyof typeof Co
 
 export interface User {
   id: string;
-  telegramId: string;
+  telegramId?: string | null;
+  email?: string | null;
   role: UserRole;
+  isActive: boolean;
   studentIdentifier?: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -125,13 +127,13 @@ export interface ApiResponse<T = unknown> {
 
 export interface StaffLoginDto {
   email: string;
-  password?: string;
-  passcode?: string;
+  password: string;
 }
 
 export interface CurrentUser {
   id: string;
   telegramId?: string | null;
+  email?: string | null;
   role: UserRole;
   studentIdentifier?: string | null;
 }

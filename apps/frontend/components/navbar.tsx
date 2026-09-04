@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Menu, UserCheck, Bell } from 'lucide-react';
+import { Menu, UserCheck } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api';
 
@@ -12,7 +12,8 @@ interface NavbarProps {
 export function Navbar({ onToggleMobileMenu }: NavbarProps) {
   const { data: user } = useQuery({
     queryKey: ['currentUser'],
-    queryFn: () => apiClient<{ id: string; email: string; role: string }>('/api/auth/me'),
+    queryFn: () =>
+      apiClient<{ id: string; email?: string | null; role: string }>('/api/auth/me'),
   });
 
   return (

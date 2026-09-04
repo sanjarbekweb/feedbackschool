@@ -71,7 +71,7 @@ export class StaffBotController {
     const user = await this.usersService.findByTelegramId(telegramId);
 
     if (!user || (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)) {
-      this.logger.warn(`Unauthorized staff bot access attempt from Telegram ID: ${telegramId}`);
+      this.logger.warn('Unauthorized staff bot access attempt.');
       if (ctx.callbackQuery) {
         await ctx.answerCallbackQuery({
           text: '⛔ Access Restricted. Authorized psychology staff only.',

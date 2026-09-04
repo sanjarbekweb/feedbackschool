@@ -4,11 +4,12 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 5 — Integration, Security & Deployment (COMPLETED)
+- Project-wide remediation — authentication and database foundation (IN PROGRESS)
 
 ## Current Goal
 
-- All 5 Phases of `plan.md` completed. System is production-ready for deployment on Railway (backend + DB) and Vercel (frontend).
+- Execute `context/project-remediation-plan.md`. The system is not production-ready
+  until the remediation release gates have current evidence.
 
 ## Completed
 
@@ -86,11 +87,31 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- None (All 5 phases fully complete).
+- Repairing the shared paginated API contract and frontend consumers.
 
 ## Next Up
 
-- Ready for production deployment to Railway and Vercel.
+- Implement the case status state machine and student follow-up transition.
+- Add CSRF protection and complete typed production configuration validation.
+
+## Remediation Work Completed
+
+- Replaced placeholder/default web authentication with dedicated normalized staff
+  email, bcrypt password hash, active-state enforcement, and credential-version JWT
+  revocation.
+- Added a non-echoing admin provisioning CLI and provisioned an active administrator
+  in the configured Supabase PostgreSQL database. No plaintext password is stored.
+- Synchronized all committed Prisma migrations with the live database using the
+  Supabase session pooler.
+- Revoked `anon` and `authenticated` Data API privileges from the private application
+  tables and removed public execution access to the RLS auto-enable function.
+- Removed the built-in Telegram administrator ID fallback and raw Telegram-ID startup
+  logging; only explicitly configured IDs can be synchronized.
+- Removed request bodies and response headers from HTTP logs after a runtime smoke
+  test identified JWT exposure through `Set-Cookie`; the exposed test session was
+  revoked and the corrected logging behavior was verified.
+- Added the missing message-sender foreign-key index and removed the redundant email
+  lookup index.
 
 ## Open Questions & Resolved Defaults
 

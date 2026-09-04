@@ -4,10 +4,15 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { Request } from 'express';
 import { UsersService } from '../users/users.service';
 import { CurrentUser } from '@psychology/types';
+import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@psychology/types';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    configService: ConfigService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
         (request: Request) => {
@@ -25,18 +30,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
         },
       ]),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'local_development_secret_only',
+      secretOrKey: configService.getOrThrow<string>('JWT_SECRET'),
     });
   }
 
-  async validate(payload: { sub: string; role: any }): Promise<CurrentUser> {
+  async validate(payload: {
+    sub: string;
+    role: UserRole;
+    credentialVersion: number;
+  }): Promise<CurrentUser> {
     const user = await this.usersService.findById(payload.sub);
-    if (!user) {
+    if (
+      !user ||
+      !user.isActive ||
+      user.credentialVersion !== payload.credentialVersion ||
+      (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)
+    ) {
       throw new UnauthorizedException('User no longer exists or session expired.');
     }
     return {
       id: user.id,
       telegramId: user.telegramId,
+      email: user.email,
       role: user.role,
       studentIdentifier: user.studentIdentifier,
     };

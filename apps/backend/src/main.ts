@@ -15,6 +15,7 @@ async function bootstrap() {
   // Trust reverse proxy (Railway, Vercel, Cloudflare) for accurate IP detection in rate limiting
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
+  expressApp.disable('x-powered-by');
 
   // Parse HTTP-only cookies
   app.use(cookieParser());
