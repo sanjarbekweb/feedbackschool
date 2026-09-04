@@ -9,6 +9,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
 
+  // Enable graceful shutdown hooks for process termination (SIGTERM, SIGINT)
+  app.enableShutdownHooks();
+
+  // Trust reverse proxy (Railway, Vercel, Cloudflare) for accurate IP detection in rate limiting
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   // Parse HTTP-only cookies
   app.use(cookieParser());
 

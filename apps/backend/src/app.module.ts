@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { DatabaseModule } from './database/database.module';
 import { CommonModule } from './common/common.module';
 import { AuditModule } from './audit/audit.module';
@@ -50,6 +52,12 @@ import { LoggerModule } from 'nestjs-pino';
         },
       },
     }),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     DatabaseModule,
     CommonModule,
     AuditModule,
@@ -61,6 +69,12 @@ import { LoggerModule } from 'nestjs-pino';
     RealtimeModule,
     StatisticsModule,
     TelegramModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

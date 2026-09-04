@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Bot, Context, InlineKeyboard } from 'grammy';
+import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy';
 import { ConversationsService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
 import { UsersService } from '../users/users.service';
@@ -18,6 +18,10 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   public studentController?: StudentBotController;
   public staffController?: StaffBotController;
 
+  private studentWebhookHandler?: (req: any, res: any) => any;
+  private staffWebhookHandler?: (req: any, res: any) => any;
+  private isWebhookMode = false;
+
   constructor(
     private readonly configService: ConfigService,
     private readonly conversationsService: ConversationsService,
@@ -30,7 +34,14 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const studentToken = this.configService.get<string>('STUDENT_BOT_TOKEN');
     const staffToken = this.configService.get<string>('STAFF_BOT_TOKEN');
-    const staffGroupId = this.configService.get<string>('STAFF_GROUP_ID');
+    const staffGroupId =
+      this.configService.get<string>('STAFF_GROUP_ID') ||
+      this.configService.get<string>('STAFF_TELEGRAM_GROUP_ID');
+    const mode = this.configService.get<string>('TELEGRAM_MODE') || 'polling';
+    const webhookUrl = this.configService.get<string>('TELEGRAM_WEBHOOK_URL');
+    const webhookSecret = this.configService.get<string>('TELEGRAM_WEBHOOK_SECRET');
+
+    this.isWebhookMode = mode.toLowerCase() === 'webhook';
 
     // Wire notifications to staff group via Staff Bot
     this.notificationsService.registerStaffGroupNotifier(async (formattedText: string) => {
@@ -73,14 +84,33 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           this.usersService,
         );
 
-        this.studentBot
-          .start({
-            drop_pending_updates: true,
-            onStart: (info) => this.logger.log(`Student Bot started as @${info.username}`),
-          })
-          .catch((err) => {
-            this.logger.error(`Failed to start Student Bot polling: ${err.message}`);
-          });
+        if (this.isWebhookMode) {
+          this.studentWebhookHandler = webhookCallback(
+            this.studentBot,
+            'express',
+            webhookSecret ? { secretToken: webhookSecret } : undefined,
+          );
+
+          if (webhookUrl) {
+            const formattedWebhook = `${webhookUrl.replace(/\/$/, '')}/api/telegram/student`;
+            await this.studentBot.api.setWebhook(formattedWebhook, {
+              secret_token: webhookSecret,
+              drop_pending_updates: true,
+            });
+            this.logger.log(`Student Bot webhook registered at: ${formattedWebhook}`);
+          } else {
+            this.logger.warn('TELEGRAM_MODE is webhook but TELEGRAM_WEBHOOK_URL is not set.');
+          }
+        } else {
+          this.studentBot
+            .start({
+              drop_pending_updates: true,
+              onStart: (info) => this.logger.log(`Student Bot started via polling as @${info.username}`),
+            })
+            .catch((err) => {
+              this.logger.error(`Failed to start Student Bot polling: ${err.message}`);
+            });
+        }
       } catch (err: any) {
         this.logger.error(`Error initializing Student Bot: ${err.message}`);
       }
@@ -102,14 +132,33 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
           this.statisticsService,
         );
 
-        this.staffBot
-          .start({
-            drop_pending_updates: true,
-            onStart: (info) => this.logger.log(`Staff Bot started as @${info.username}`),
-          })
-          .catch((err) => {
-            this.logger.error(`Failed to start Staff Bot polling: ${err.message}`);
-          });
+        if (this.isWebhookMode) {
+          this.staffWebhookHandler = webhookCallback(
+            this.staffBot,
+            'express',
+            webhookSecret ? { secretToken: webhookSecret } : undefined,
+          );
+
+          if (webhookUrl) {
+            const formattedWebhook = `${webhookUrl.replace(/\/$/, '')}/api/telegram/staff`;
+            await this.staffBot.api.setWebhook(formattedWebhook, {
+              secret_token: webhookSecret,
+              drop_pending_updates: true,
+            });
+            this.logger.log(`Staff Bot webhook registered at: ${formattedWebhook}`);
+          } else {
+            this.logger.warn('TELEGRAM_MODE is webhook but TELEGRAM_WEBHOOK_URL is not set.');
+          }
+        } else {
+          this.staffBot
+            .start({
+              drop_pending_updates: true,
+              onStart: (info) => this.logger.log(`Staff Bot started via polling as @${info.username}`),
+            })
+            .catch((err) => {
+              this.logger.error(`Failed to start Staff Bot polling: ${err.message}`);
+            });
+        }
       } catch (err: any) {
         this.logger.error(`Error initializing Staff Bot: ${err.message}`);
       }
@@ -120,14 +169,32 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async onModuleDestroy() {
-    if (this.studentBot) {
-      await this.studentBot.stop();
-      this.logger.log('Student Bot stopped.');
+  handleStudentWebhook(req: any, res: any) {
+    if (this.studentWebhookHandler) {
+      return this.studentWebhookHandler(req, res);
     }
-    if (this.staffBot) {
-      await this.staffBot.stop();
-      this.logger.log('Staff Bot stopped.');
+    return res.status(200).json({ ok: true, status: 'dormant_or_polling' });
+  }
+
+  handleStaffWebhook(req: any, res: any) {
+    if (this.staffWebhookHandler) {
+      return this.staffWebhookHandler(req, res);
+    }
+    return res.status(200).json({ ok: true, status: 'dormant_or_polling' });
+  }
+
+  async onModuleDestroy() {
+    if (!this.isWebhookMode) {
+      if (this.studentBot) {
+        await this.studentBot.stop();
+        this.logger.log('Student Bot stopped.');
+      }
+      if (this.staffBot) {
+        await this.staffBot.stop();
+        this.logger.log('Staff Bot stopped.');
+      }
+    } else {
+      this.logger.log('Telegram webhook mode shutting down gracefully.');
     }
   }
 }

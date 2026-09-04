@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 4 — Web Dashboard (COMPLETED)
+- Phase 5 — Integration, Security & Deployment (COMPLETED)
 
 ## Current Goal
 
-- Begin Phase 5 in `plan.md`: Integration, Security & Deployment (Full quality gate verification, security review against threat list, production environment configurations, and deployment readiness).
+- All 5 Phases of `plan.md` completed. System is production-ready for deployment on Railway (backend + DB) and Vercel (frontend).
 
 ## Completed
 
@@ -55,14 +55,42 @@ Update this file after every meaningful implementation change.
   - Built Settings & Privacy page (`dashboard/settings/page.tsx`) with account info, privacy invariants summary, and session logout.
   - Single source of truth verified: website responses invoke backend REST endpoint, persist to PostgreSQL, update conversation status, and trigger student Telegram notification.
   - Full monorepo build passes without errors (`pnpm build` generates all 12 routes cleanly with exit code 0).
+- **Phase 5 — Integration, Security & Deployment**:
+  - Rate Limiting & Protection:
+    - Wired `@nestjs/throttler` with `ThrottlerGuard` as global `APP_GUARD` (100 req/min).
+    - Strict endpoint throttling (`@Throttle({ default: { limit: 5, ttl: 60000 } })`) on `/api/auth/login` to prevent brute force.
+    - Reverse proxy trust (`express.set('trust proxy', 1)`) configured for accurate IP tracking in production.
+  - Lifecycle & Resilience:
+    - Enabled graceful shutdown hooks (`app.enableShutdownHooks()`) for SIGTERM / SIGINT signals.
+    - Enhanced health endpoint (`GET /api/health`) with live PostgreSQL connectivity check (`SELECT 1`), uptime, and service status.
+  - Dual Telegram Delivery Modes:
+    - Implemented webhook support in `TelegramService` via grammY's `webhookCallback`.
+    - Added `TelegramController` (`POST /api/telegram/student` and `POST /api/telegram/staff`) with secret token verification (`X-Telegram-Bot-Api-Secret-Token`) to prevent spoofing, exempted from IP throttling (`@SkipThrottle()`).
+    - Preserved seamless fallback to long polling for local development (`TELEGRAM_MODE=polling`).
+  - Security & Privacy Audit Passed:
+    - Verified IDOR protection (server-side ownership check returning 404 on unowned cases).
+    - Verified XSS mitigation (automatic output encoding in React/Next.js, class-validator sanitization).
+    - Verified SQL injection protection (Prisma ORM parameterized queries).
+    - Verified CSRF & Cookie security (`SameSite: 'none'`, `secure: true` in production, `HttpOnly`, plus Bearer token extractor).
+    - Verified zero message content leakage (audit logs, Pino request logs, staff group alerts).
+    - Verified student identity enumeration prevention (anonymized `Student #S-xxxx` in staff directories).
+    - Verified secrets management (no secrets in Git, `.env*` ignored, comprehensive `.env.example` templates created).
+  - Deployment Artifacts:
+    - Multi-stage production `Dockerfile` with healthcheck.
+    - `railway.json` and `apps/backend/railway.json` with migration and start commands (`prisma:migrate:prod`).
+    - `apps/frontend/vercel.json` for Next.js on Vercel.
+    - Detailed `README.md` deployment guides for Railway and Vercel.
+  - Test & Build Quality Gate:
+    - 6 test suites with 17 unit/integration tests passing cleanly (`pnpm test`).
+    - Zero-warning production build across monorepo (`pnpm build`).
 
 ## In Progress
 
-- None (Phase 4 complete, ready for Phase 5).
+- None (All 5 phases fully complete).
 
 ## Next Up
 
-- Phase 5 — Integration, Security & Deployment (see `plan.md`)
+- Ready for production deployment to Railway and Vercel.
 
 ## Open Questions & Resolved Defaults
 
