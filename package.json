@@ -1,0 +1,15 @@
+{
+  "name": "feedbackschool-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "School Psychology Support System Monorepo",
+  "scripts": {
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "test": "pnpm --recursive run test"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  },
+  "packageManager": "pnpm@10.12.1"
+}

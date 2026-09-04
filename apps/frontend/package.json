@@ -1,0 +1,18 @@
+{
+  "name": "@psychology/frontend",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js Dashboard for School Psychology Support System",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@psychology/types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.2"
+  }
+}
