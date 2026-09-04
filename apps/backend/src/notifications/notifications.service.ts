@@ -8,29 +8,64 @@ export interface StaffNotificationPayload {
   timestamp: string;
 }
 
+export type StaffGroupNotifier = (formattedText: string) => Promise<void>;
+export type StudentNotifier = (studentTelegramId: string, caseId: string, messageText: string) => Promise<void>;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  GENERAL: 'General Inquiry',
+  ACADEMIC: 'Academic Stress',
+  PERSONAL: 'Personal / Emotional',
+  SOCIAL: 'Social / Relationships',
+  URGENT: 'Urgent Support',
+};
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
+  private staffGroupNotifier?: StaffGroupNotifier;
+  private studentNotifier?: StudentNotifier;
+
+  registerStaffGroupNotifier(notifier: StaffGroupNotifier) {
+    this.staffGroupNotifier = notifier;
+  }
+
+  registerStudentNotifier(notifier: StudentNotifier) {
+    this.studentNotifier = notifier;
+  }
 
   /**
-   * Dispatches a notification to authorized psychology staff.
-   * INVARIANT: Never contains message content! Only case ID, category, status, and timestamp.
+   * Dispatches a privacy-safe notification to authorized psychology staff group.
+   * INVARIANT: Never contains message content or personal identifiers!
+   * Only case ID, category, status, and timestamp.
    */
   async notifyStaffGroup(payload: StaffNotificationPayload): Promise<void> {
     const { caseId, category, status, timestamp } = payload;
 
-    // Log the privacy-safe dispatch
     this.logger.log(
       `[Staff Notification] Case=${caseId} Category=${category} Status=${status} Time=${timestamp}`,
     );
 
-    // In Phase 3, this will send a message via grammY to STAFF_TELEGRAM_GROUP_ID
-    // Format:
-    // 🔔 New psychology support request
-    // Case: #A81F42
-    // Category: Personal
-    // Status: Unanswered
-    // Received: 14:32
+    const categoryLabel = CATEGORY_LABELS[category] || category;
+    const timeFormatted = new Date(timestamp).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const formattedText =
+      `🔔 *New psychology support request*\n\n` +
+      `Case: *${caseId}*\n` +
+      `Category: ${categoryLabel}\n` +
+      `Status: ⏳ Unanswered\n` +
+      `Received: ${timeFormatted}\n\n` +
+      `Open in staff bot or dashboard to review and reply.`;
+
+    if (this.staffGroupNotifier) {
+      try {
+        await this.staffGroupNotifier(formattedText);
+      } catch (err: any) {
+        this.logger.error(`Failed to send staff group notification: ${err.message}`, err.stack);
+      }
+    }
   }
 
   /**
@@ -38,6 +73,17 @@ export class NotificationsService {
    */
   async notifyStudentResponse(studentTelegramId: string, caseId: string): Promise<void> {
     this.logger.log(`[Student Notification] studentTelegramId=${studentTelegramId} Case=${caseId} Response available`);
-    // In Phase 3, this triggers student bot message
+
+    const messageText =
+      `📩 *You have received a response from the psychology staff regarding Case ${caseId}.*\n\n` +
+      `Click below to view the response:`;
+
+    if (this.studentNotifier) {
+      try {
+        await this.studentNotifier(studentTelegramId, caseId, messageText);
+      } catch (err: any) {
+        this.logger.error(`Failed to send student notification: ${err.message}`, err.stack);
+      }
+    }
   }
 }

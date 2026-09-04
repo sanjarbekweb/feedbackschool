@@ -10,6 +10,7 @@ import { MessagesModule } from './messages/messages.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { TelegramModule } from './telegram/telegram.module';
 
 import { LoggerModule } from 'nestjs-pino';
 
@@ -59,6 +60,7 @@ import { LoggerModule } from 'nestjs-pino';
     NotificationsModule,
     RealtimeModule,
     StatisticsModule,
+    TelegramModule,
   ],
 })
 export class AppModule {}
