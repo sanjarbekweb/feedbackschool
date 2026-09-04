@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { QueryProvider } from '@/lib/query-provider';
 
 export const metadata: Metadata = {
   title: 'School Psychology Support System',
@@ -14,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased bg-base text-text-primary min-h-screen">
-        {children}
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );

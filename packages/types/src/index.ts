@@ -243,3 +243,5 @@ export type AppSseEvent =
   | ConversationUpdatedSseEvent
   | MessageCreatedSseEvent
   | StatsUpdatedSseEvent;
+
+export type RealtimeEvent = AppSseEvent;

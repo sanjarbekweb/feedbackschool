@@ -4,11 +4,11 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Phase 3 — Telegram Bots (COMPLETED)
+- Phase 4 — Web Dashboard (COMPLETED)
 
 ## Current Goal
 
-- Begin Phase 4 in `plan.md`: Web Dashboard (Full Staff Dashboard, conversations list, triage view, message composer, SSE live update integration, and Motion animations).
+- Begin Phase 5 in `plan.md`: Integration, Security & Deployment (Full quality gate verification, security review against threat list, production environment configurations, and deployment readiness).
 
 ## Completed
 
@@ -43,14 +43,26 @@ Update this file after every meaningful implementation change.
   - Architecture invariant enforced: handlers are thin adapters calling shared backend services (`ConversationsService`, `MessagesService`, `UsersService`, `StatisticsService`). Zero direct Prisma calls from handlers.
   - 12 comprehensive unit and integration tests passing (`pnpm test`).
   - Monorepo production build verified (`pnpm build` exits with code 0).
+- **Phase 4 — Web Dashboard**:
+  - Installed `@tanstack/react-query` and created client `QueryProvider`.
+  - Built realtime Server-Sent Events client (`useRealtimeEvents` in `lib/sse.ts`) connecting to `/api/events` with automatic cache invalidation for instant live updates without manual page refreshes.
+  - Designed white-first, calm psychology theme layout (`dashboard/layout.tsx`, `components/sidebar.tsx`, `components/navbar.tsx`) with Motion `layoutId="active-nav-indicator"`, SSE live status badge, staff profile info, and mobile drawer support.
+  - Built Dashboard Home (`dashboard/page.tsx`) with KPI cards (Total, Unanswered, Answered, Closed), turnaround metrics, recent cases table, and quick triage actions.
+  - Built Conversation Triage list component (`components/conversation-list.tsx`) with Case ID search, category filters, status filters, sorting, pagination, and unread indicators across `/dashboard/inbox`, `/dashboard/unanswered`, and `/dashboard/answered`.
+  - Built Conversation Detail Screen (`dashboard/conversations/[id]/page.tsx`) with case metadata header, quick triage actions (`Mark Answered`, `Close Case`), chronological chat timeline with distinct sender alignment, and fixed response composer with React Hook Form + Zod validation.
+  - Built Students Directory (`dashboard/students/page.tsx`) with anonymized identifiers (`Student #S-xxxx`), registered dates, and case counts. Added `UsersController` with `GET /api/users/students` protected by RBAC.
+  - Built Statistics Analytics page (`dashboard/statistics/page.tsx`) with status distribution progress bar, SLA metrics, and turnaround benchmarks.
+  - Built Settings & Privacy page (`dashboard/settings/page.tsx`) with account info, privacy invariants summary, and session logout.
+  - Single source of truth verified: website responses invoke backend REST endpoint, persist to PostgreSQL, update conversation status, and trigger student Telegram notification.
+  - Full monorepo build passes without errors (`pnpm build` generates all 12 routes cleanly with exit code 0).
 
 ## In Progress
 
-- None (Phase 3 complete, ready for Phase 4).
+- None (Phase 4 complete, ready for Phase 5).
 
 ## Next Up
 
-- Phase 4 — Web Dashboard (see `plan.md`)
+- Phase 5 — Integration, Security & Deployment (see `plan.md`)
 
 ## Open Questions & Resolved Defaults
 
