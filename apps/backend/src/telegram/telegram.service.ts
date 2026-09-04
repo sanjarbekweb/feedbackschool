@@ -8,6 +8,7 @@ import { StatisticsService } from '../statistics/statistics.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { StudentBotController } from './student/student.bot';
 import { StaffBotController } from './staff/staff.bot';
+import { UserRole } from '@psychology/types';
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -42,6 +43,23 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     const webhookSecret = this.configService.get<string>('TELEGRAM_WEBHOOK_SECRET');
 
     this.isWebhookMode = mode.toLowerCase() === 'webhook';
+
+    // Auto-bootstrap configured admin Telegram IDs
+    const adminIds = (
+      this.configService.get<string>('ADMIN_TELEGRAM_IDS') || '8264201735'
+    )
+      .split(',')
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    for (const adminId of adminIds) {
+      try {
+        await this.usersService.ensureStaffUser(adminId, UserRole.ADMIN);
+        this.logger.log(`Ensured Telegram ID ${adminId} is registered with ADMIN role.`);
+      } catch (err: any) {
+        this.logger.warn(`Could not bootstrap admin Telegram ID ${adminId}: ${err.message}`);
+      }
+    }
 
     // Wire notifications to staff group via Staff Bot
     this.notificationsService.registerStaffGroupNotifier(async (formattedText: string) => {
