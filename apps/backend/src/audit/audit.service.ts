@@ -23,11 +23,19 @@ export class AuditService {
     const { actorId, action, targetType, targetId, metadata } = params;
 
     // Safety sanitize: strip any field that might accidentally contain message text
-    const safeMetadata = metadata ? { ...metadata } : {};
-    delete (safeMetadata as Record<string, unknown>)['content'];
-    delete (safeMetadata as Record<string, unknown>)['initialMessage'];
-    delete (safeMetadata as Record<string, unknown>)['text'];
-    delete (safeMetadata as Record<string, unknown>)['message'];
+    const blockedKeys = new Set(['content', 'initialMessage', 'text', 'message']);
+    const safeMetadata: Record<string, string | number | boolean | null> = {};
+    for (const [key, value] of Object.entries(metadata ?? {})) {
+      if (blockedKeys.has(key)) continue;
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean' ||
+        value === null
+      ) {
+        safeMetadata[key] = value;
+      }
+    }
 
     try {
       await this.prisma.auditLog.create({
@@ -36,7 +44,7 @@ export class AuditService {
           action,
           targetType,
           targetId,
-          metadata: safeMetadata as any,
+          metadata: safeMetadata,
         },
       });
 

@@ -9,6 +9,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { StudentBotController } from './student/student.bot';
 import { StaffBotController } from './staff/staff.bot';
 import { UserRole } from '@psychology/types';
+import { Request, Response } from 'express';
+
+type ExpressWebhookHandler = (
+  request: Request,
+  response: Response,
+) => void | Promise<void>;
 
 @Injectable()
 export class TelegramService implements OnModuleInit, OnModuleDestroy {
@@ -19,8 +25,8 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   public studentController?: StudentBotController;
   public staffController?: StaffBotController;
 
-  private studentWebhookHandler?: (req: any, res: any) => any;
-  private staffWebhookHandler?: (req: any, res: any) => any;
+  private studentWebhookHandler?: ExpressWebhookHandler;
+  private staffWebhookHandler?: ExpressWebhookHandler;
   private isWebhookMode = false;
 
   constructor(
@@ -43,6 +49,12 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     const webhookSecret = this.configService.get<string>('TELEGRAM_WEBHOOK_SECRET');
 
     this.isWebhookMode = mode.toLowerCase() === 'webhook';
+
+    if (this.isWebhookMode && (!webhookUrl || !webhookSecret)) {
+      throw new Error(
+        'Webhook mode requires TELEGRAM_WEBHOOK_URL and TELEGRAM_WEBHOOK_SECRET.',
+      );
+    }
 
     // Synchronize only explicitly configured admin Telegram IDs. There is no
     // built-in fallback identity: production authorization must fail closed.
@@ -112,7 +124,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             const formattedWebhook = `${webhookUrl.replace(/\/$/, '')}/api/telegram/student`;
             await this.studentBot.api.setWebhook(formattedWebhook, {
               secret_token: webhookSecret,
-              drop_pending_updates: true,
+              allowed_updates: ['message', 'callback_query'],
             });
             this.logger.log(`Student Bot webhook registered at: ${formattedWebhook}`);
           } else {
@@ -121,15 +133,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         } else {
           this.studentBot
             .start({
-              drop_pending_updates: true,
               onStart: (info) => this.logger.log(`Student Bot started via polling as @${info.username}`),
             })
             .catch((err) => {
               this.logger.error(`Failed to start Student Bot polling: ${err.message}`);
             });
         }
-      } catch (err: any) {
-        this.logger.error(`Error initializing Student Bot: ${err.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Error initializing Student Bot: ${message}`);
       }
     } else {
       this.logger.warn(
@@ -160,7 +172,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
             const formattedWebhook = `${webhookUrl.replace(/\/$/, '')}/api/telegram/staff`;
             await this.staffBot.api.setWebhook(formattedWebhook, {
               secret_token: webhookSecret,
-              drop_pending_updates: true,
+              allowed_updates: ['message', 'callback_query'],
             });
             this.logger.log(`Staff Bot webhook registered at: ${formattedWebhook}`);
           } else {
@@ -169,15 +181,15 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         } else {
           this.staffBot
             .start({
-              drop_pending_updates: true,
               onStart: (info) => this.logger.log(`Staff Bot started via polling as @${info.username}`),
             })
             .catch((err) => {
               this.logger.error(`Failed to start Staff Bot polling: ${err.message}`);
             });
         }
-      } catch (err: any) {
-        this.logger.error(`Error initializing Staff Bot: ${err.message}`);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Error initializing Staff Bot: ${message}`);
       }
     } else {
       this.logger.warn(
@@ -186,18 +198,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  handleStudentWebhook(req: any, res: any) {
+  handleStudentWebhook(request: Request, response: Response) {
     if (this.studentWebhookHandler) {
-      return this.studentWebhookHandler(req, res);
+      return this.studentWebhookHandler(request, response);
     }
-    return res.status(200).json({ ok: true, status: 'dormant_or_polling' });
+    return response.status(200).json({ ok: true, status: 'dormant_or_polling' });
   }
 
-  handleStaffWebhook(req: any, res: any) {
+  handleStaffWebhook(request: Request, response: Response) {
     if (this.staffWebhookHandler) {
-      return this.staffWebhookHandler(req, res);
+      return this.staffWebhookHandler(request, response);
     }
-    return res.status(200).json({ ok: true, status: 'dormant_or_polling' });
+    return response.status(200).json({ ok: true, status: 'dormant_or_polling' });
   }
 
   async onModuleDestroy() {

@@ -15,8 +15,8 @@ import {
   AlertCircle,
   Loader2,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { DashboardStatistics, PaginatedResponse } from '@psychology/types';
+import { apiClient, paginatedApiClient } from '@/lib/api';
+import { ConversationListItem, DashboardStatistics } from '@psychology/types';
 import { StatusBadge, CategoryBadge } from '@/components/badges';
 
 export default function DashboardOverviewPage() {
@@ -28,7 +28,9 @@ export default function DashboardOverviewPage() {
   const { data: recentCases, isLoading: casesLoading } = useQuery({
     queryKey: ['conversations', { limit: 5, sortBy: 'newest' }],
     queryFn: () =>
-      apiClient<PaginatedResponse<any>>('/api/conversations?limit=5&sortBy=newest'),
+      paginatedApiClient<ConversationListItem>(
+        '/api/conversations?limit=5&sortBy=newest',
+      ),
   });
 
   const cards = [
@@ -143,7 +145,11 @@ export default function DashboardOverviewPage() {
           <div>
             <span className="text-xs text-text-muted block">Avg Turnaround Time</span>
             <span className="text-lg font-bold text-accent-primary-dark">
-              {statsLoading ? '...' : `${stats?.averageResponseTimeMinutes || 35} minutes`}
+              {statsLoading
+                ? '...'
+                : stats?.averageResponseTimeMinutes == null
+                  ? 'Not enough data'
+                  : `${stats.averageResponseTimeMinutes} minutes`}
             </span>
             <p className="text-[11px] text-text-muted">
               Estimated staff response turnaround for student inquiries
@@ -198,7 +204,7 @@ export default function DashboardOverviewPage() {
           </div>
         ) : (
           <div className="divide-y divide-border-default/60">
-            {recentCases?.data?.map((conv: any) => (
+            {recentCases?.data.map((conv) => (
               <Link
                 key={conv.id}
                 href={`/dashboard/conversations/${conv.id}`}

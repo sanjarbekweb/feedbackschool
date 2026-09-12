@@ -50,7 +50,6 @@ model User {
   messages          Message[]
   auditLogs         AuditLog[]
 
-  @@index([telegramId])
   @@index([role])
   @@map("users")
 }
@@ -72,6 +71,7 @@ model Conversation {
   @@index([studentId])
   @@index([lastMessageAt])
   @@index([category])
+  @@index([status, lastMessageAt(sort: Desc)])
   @@map("conversations")
 }
 
@@ -90,6 +90,7 @@ model Message {
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
+  @@index([conversationId, senderType, createdAt])
   @@map("messages")
 }
 

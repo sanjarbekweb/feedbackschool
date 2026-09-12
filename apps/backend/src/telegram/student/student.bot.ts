@@ -8,6 +8,7 @@ import {
   StudentSessionData,
   StudentSessionState,
 } from '../types/session';
+import { splitTelegramText } from '../utils/telegram-text';
 import {
   ConversationCategory,
   ConversationStatus,
@@ -215,7 +216,7 @@ export class StudentBotController {
     await ctx.reply(messageText, {
       parse_mode: 'Markdown',
       reply_markup: StudentKeyboards.conversationList(
-        result.data.map((c: any) => ({
+        result.data.map((c) => ({
           id: c.id,
           caseId: c.caseId,
           status: c.status,
@@ -249,7 +250,7 @@ export class StudentBotController {
       statusLabel = '🔒 Closed';
     }
 
-    let text = `Case *${conv.caseId}*\nStatus: ${statusLabel}\nCategory: ${categoryLabel}\n────────────────────────\n`;
+    let text = `Case ${conv.caseId}\nStatus: ${statusLabel}\nCategory: ${categoryLabel}\n────────────────────────\n`;
 
     for (const msg of messagesResult.data) {
       const timeStr = new Date(msg.createdAt).toLocaleString('en-US', {
@@ -267,10 +268,15 @@ export class StudentBotController {
 
     const isClosed = conv.status === ConversationStatus.CLOSED;
 
-    await ctx.reply(text, {
-      parse_mode: 'Markdown',
-      reply_markup: StudentKeyboards.conversationDetail(conv.id, isClosed),
-    });
+    const chunks = splitTelegramText(text);
+    for (const [index, chunk] of chunks.entries()) {
+      await ctx.reply(
+        chunk,
+        index === chunks.length - 1
+          ? { reply_markup: StudentKeyboards.conversationDetail(conv.id, isClosed) }
+          : undefined,
+      );
+    }
   }
 
   private async handleStartReply(ctx: Context, conversationId: string) {
@@ -328,8 +334,9 @@ export class StudentBotController {
           reply_markup: StudentKeyboards.mainMenu(),
         },
       );
-    } catch (err: any) {
-      this.logger.error(`Error creating conversation: ${err.message}`, err.stack);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error creating conversation: ${message}`);
       await ctx.reply('An error occurred while sending your message. Please try again later.');
     }
   }
@@ -360,8 +367,9 @@ export class StudentBotController {
           reply_markup: StudentKeyboards.mainMenu(),
         },
       );
-    } catch (err: any) {
-      this.logger.error(`Error sending follow-up: ${err.message}`, err.stack);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error sending follow-up: ${message}`);
       await ctx.reply('An error occurred while sending your message. Please try again later.');
     }
   }

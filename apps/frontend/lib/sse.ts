@@ -8,13 +8,27 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
-export function useRealtimeEvents() {
+const EVENT_TYPES: RealtimeEvent['type'][] = [
+  'CONVERSATION_CREATED',
+  'CONVERSATION_UPDATED',
+  'MESSAGE_CREATED',
+  'STATS_UPDATED',
+];
+
+export function useRealtimeEvents(enabled = true) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<ConnectionStatus>('connecting');
 
   useEffect(() => {
+    if (!enabled) {
+      setStatus('disconnected');
+      return;
+    }
+
     let eventSource: EventSource | null = null;
-    let reconnectTimeout: NodeJS.Timeout;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
+    let reconnectAttempt = 0;
+    let disposed = false;
 
     const connect = () => {
       setStatus('connecting');
@@ -23,10 +37,11 @@ export function useRealtimeEvents() {
       });
 
       eventSource.onopen = () => {
+        reconnectAttempt = 0;
         setStatus('connected');
       };
 
-      eventSource.onmessage = (event) => {
+      const handleEvent = (event: MessageEvent<string>) => {
         try {
           const data: RealtimeEvent = JSON.parse(event.data);
           
@@ -58,25 +73,39 @@ export function useRealtimeEvents() {
         }
       };
 
+      EVENT_TYPES.forEach((eventType) => {
+        eventSource?.addEventListener(eventType, handleEvent as EventListener);
+      });
+
+      eventSource.addEventListener('heartbeat', () => {
+        setStatus('connected');
+      });
+
       eventSource.onerror = () => {
         setStatus('disconnected');
         if (eventSource) {
           eventSource.close();
         }
-        // Auto reconnect after 5s
-        reconnectTimeout = setTimeout(connect, 5000);
+        if (!disposed) {
+          const delay = Math.min(1000 * 2 ** reconnectAttempt, 30_000);
+          reconnectAttempt += 1;
+          reconnectTimeout = setTimeout(connect, delay);
+        }
       };
     };
 
     connect();
 
     return () => {
+      disposed = true;
       if (eventSource) {
         eventSource.close();
       }
-      clearTimeout(reconnectTimeout);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+      }
     };
-  }, [queryClient]);
+  }, [enabled, queryClient]);
 
   return { status };
 }

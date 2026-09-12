@@ -45,7 +45,6 @@ describe('HealthController', () => {
       expect.objectContaining({
         status: 'degraded',
         database: 'disconnected',
-        error: 'Database connection failed',
       }),
     );
   });

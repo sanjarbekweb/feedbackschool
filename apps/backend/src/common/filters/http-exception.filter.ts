@@ -31,8 +31,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code = (obj['error'] as string) || exception.name;
         details = obj['message'];
       }
-    } else if (exception instanceof Error) {
-      message = exception.message;
     }
 
     const errorResponse: ApiResponse = {

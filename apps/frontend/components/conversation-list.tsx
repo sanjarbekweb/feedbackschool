@@ -15,8 +15,12 @@ import {
   Loader2,
   Inbox,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { ConversationCategory, ConversationStatus, PaginatedResponse } from '@psychology/types';
+import { paginatedApiClient } from '@/lib/api';
+import {
+  ConversationCategory,
+  ConversationListItem,
+  ConversationStatus,
+} from '@psychology/types';
 import { StatusBadge, CategoryBadge } from '@/components/badges';
 
 interface ConversationListProps {
@@ -32,8 +36,10 @@ export function ConversationList({
 }: ConversationListProps) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<string>(initialStatus || 'ALL');
-  const [category, setCategory] = useState<string>('ALL');
+  const [status, setStatus] = useState<ConversationStatus | 'ALL'>(
+    initialStatus || 'ALL',
+  );
+  const [category, setCategory] = useState<ConversationCategory | 'ALL'>('ALL');
   const [sortBy, setSortBy] = useState<'newest' | 'oldest'>('newest');
 
   // Build query params
@@ -52,10 +58,12 @@ export function ConversationList({
     queryParams.set('search', search.trim());
   }
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['conversations', queryParams.toString()],
     queryFn: () =>
-      apiClient<PaginatedResponse<any>>(`/api/conversations?${queryParams.toString()}`),
+      paginatedApiClient<ConversationListItem>(
+        `/api/conversations?${queryParams.toString()}`,
+      ),
   });
 
   return (
@@ -94,7 +102,7 @@ export function ConversationList({
             <select
               value={category}
               onChange={(e) => {
-                setCategory(e.target.value);
+                setCategory(e.target.value as ConversationCategory | 'ALL');
                 setPage(1);
               }}
               aria-label="Filter by category"
@@ -113,7 +121,7 @@ export function ConversationList({
               <select
                 value={status}
                 onChange={(e) => {
-                  setStatus(e.target.value);
+                  setStatus(e.target.value as ConversationStatus | 'ALL');
                   setPage(1);
                 }}
                 aria-label="Filter by status"
@@ -121,6 +129,7 @@ export function ConversationList({
               >
                 <option value="ALL">All Statuses</option>
                 <option value={ConversationStatus.UNANSWERED}>⏳ Unanswered</option>
+                <option value={ConversationStatus.IN_PROGRESS}>💬 In progress</option>
                 <option value={ConversationStatus.ANSWERED}>✅ Answered</option>
                 <option value={ConversationStatus.CLOSED}>🔒 Closed</option>
               </select>
@@ -129,7 +138,9 @@ export function ConversationList({
             {/* Sort Filter */}
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) =>
+                setSortBy(e.target.value as 'newest' | 'oldest')
+              }
               aria-label="Sort conversations"
               className="px-2.5 py-1.5 rounded-lg border border-border-default bg-surface text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
             >
@@ -147,7 +158,16 @@ export function ConversationList({
             <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
             <span>Loading cases...</span>
           </div>
-        ) : data?.data?.length === 0 ? (
+        ) : isError ? (
+          <div className="p-12 text-center space-y-2" role="alert">
+            <p className="text-xs font-semibold text-state-error">
+              Cases could not be loaded
+            </p>
+            <p className="text-[11px] text-text-muted">
+              Check the connection and try again.
+            </p>
+          </div>
+        ) : data?.data.length === 0 ? (
           <div className="p-16 text-center space-y-2">
             <div className="w-10 h-10 rounded-xl bg-slate-100 text-text-muted mx-auto flex items-center justify-center">
               <Inbox className="w-5 h-5" />
@@ -159,7 +179,7 @@ export function ConversationList({
           </div>
         ) : (
           <div className="divide-y divide-border-default/60">
-            {data?.data?.map((conv: any) => {
+            {data?.data.map((conv) => {
               const isUnanswered = conv.status === ConversationStatus.UNANSWERED;
               return (
                 <Link

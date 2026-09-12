@@ -12,8 +12,8 @@ import {
   Calendar,
   MessageSquare,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
-import { PaginatedResponse } from '@psychology/types';
+import { paginatedApiClient } from '@/lib/api';
+import { StudentDirectoryItem } from '@psychology/types';
 
 export default function StudentsPage() {
   const [page, setPage] = useState(1);
@@ -21,7 +21,9 @@ export default function StudentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['students', page],
     queryFn: () =>
-      apiClient<PaginatedResponse<any>>(`/api/users/students?page=${page}&limit=10`),
+      paginatedApiClient<StudentDirectoryItem>(
+        `/api/users/students?page=${page}&limit=10`,
+      ),
   });
 
   return (
@@ -75,7 +77,7 @@ export default function StudentsPage() {
           </div>
         ) : (
           <div className="divide-y divide-border-default/60">
-            {data?.data?.map((student: any) => (
+            {data?.data.map((student) => (
               <div
                 key={student.id}
                 className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50/80 transition-colors"

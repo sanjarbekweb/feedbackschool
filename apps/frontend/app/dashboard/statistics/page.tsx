@@ -26,6 +26,7 @@ export default function StatisticsPage() {
   const total = stats?.totalConversations || 1;
   const unansweredPct = Math.round(((stats?.unansweredCount || 0) / total) * 100);
   const answeredPct = Math.round(((stats?.answeredCount || 0) / total) * 100);
+  const inProgressPct = Math.round(((stats?.inProgressCount || 0) / total) * 100);
   const closedPct = Math.round(((stats?.closedCount || 0) / total) * 100);
 
   return (
@@ -121,6 +122,11 @@ export default function StatisticsPage() {
               {/* Stacked Progress Bar */}
               <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
                 <div
+                  style={{ width: `${inProgressPct}%` }}
+                  className="bg-accent-primary h-full transition-all"
+                  title={`In progress: ${inProgressPct}%`}
+                />
+                <div
                   style={{ width: `${unansweredPct}%` }}
                   className="bg-amber-400 h-full transition-all"
                   title={`Unanswered: ${unansweredPct}%`}
@@ -137,10 +143,14 @@ export default function StatisticsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-xs pt-2">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs pt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
                   <span className="text-text-muted">Unanswered ({unansweredPct}%)</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-accent-primary shrink-0" />
+                  <span className="text-text-muted">In progress ({inProgressPct}%)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
@@ -166,7 +176,9 @@ export default function StatisticsPage() {
                 <div className="flex items-center justify-between pb-2 border-b border-border-default/60">
                   <span className="text-xs text-text-muted">Average Staff Turnaround</span>
                   <span className="text-xs font-bold text-accent-primary-dark">
-                    {stats?.averageResponseTimeMinutes || 35} minutes
+                    {stats?.averageResponseTimeMinutes == null
+                      ? 'Not enough data'
+                      : `${stats.averageResponseTimeMinutes} minutes`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b border-border-default/60">
@@ -176,9 +188,9 @@ export default function StatisticsPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">SLA Target</span>
-                  <span className="text-xs font-bold text-emerald-600">
-                    Within 2 business hours
+                  <span className="text-xs text-text-muted">In progress</span>
+                  <span className="text-xs font-bold text-accent-primary-dark">
+                    {stats?.inProgressCount ?? 0} cases
                   </span>
                 </div>
               </div>

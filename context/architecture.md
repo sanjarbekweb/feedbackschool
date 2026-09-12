@@ -60,9 +60,25 @@
 (records *who did what, when, on which case* — never the message
 content itself)
 
-Indexes: `users.telegramId`, `conversations.status`,
-`conversations.studentId`, `conversations.lastMessageAt`,
-`messages.conversationId`, `messages.createdAt`.
+Indexes include the unique `users.telegramId` constraint,
+`conversations.status`, `conversations.studentId`,
+`conversations.lastMessageAt`, the composite triage index
+`(status, lastMessageAt DESC)`, and message indexes for foreign-key,
+chronological, and response-time access including
+`(conversationId, senderType, createdAt)`.
+
+## Cache and Realtime Policy
+
+- Authenticated REST responses use `Cache-Control: private, no-store`; sensitive
+  case and message content must never enter shared server, proxy, or CDN caches.
+- The dashboard may keep a short-lived, per-browser-memory TanStack Query cache.
+  SSE invalidates affected queries, and logout clears the cache.
+- The SSE stream sends named domain events plus a heartbeat. Its in-process event
+  source assumes one backend replica; a shared event bus is required before
+  horizontal scaling.
+- Telegram and dashboard mutations always use the same application services.
+  A student follow-up transitions any open case back to `UNANSWERED`; a staff
+  response transitions it to `ANSWERED`.
 
 ## API Surface (REST)
 

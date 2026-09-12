@@ -101,25 +101,30 @@ export interface PaginationQuery {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
+  meta: PaginationMeta;
 }
 
-export interface ApiResponse<T = unknown> {
+export interface PaginationMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface ApiResponse<T = unknown, TMeta = never> {
   success: boolean;
   data?: T;
+  meta?: TMeta;
   error?: {
     code: string;
     message: string;
     details?: unknown;
   };
 }
+
+export type PaginatedApiResponse<T> = ApiResponse<T[], PaginationMeta>;
 
 // ==========================================
 // Auth DTOs
@@ -158,6 +163,27 @@ export interface UpdateConversationDto {
   category?: ConversationCategory;
 }
 
+export interface StudentReference {
+  studentIdentifier: string | null;
+}
+
+export interface ConversationListItem {
+  id: string;
+  caseId: string;
+  status: ConversationStatus;
+  category: ConversationCategory;
+  createdAt: Date | string;
+  lastMessageAt: Date | string;
+  student: StudentReference;
+  _count: {
+    messages: number;
+  };
+}
+
+export interface ConversationDetail extends ConversationListItem {
+  updatedAt: Date | string;
+}
+
 export interface ConversationFilterQuery extends PaginationQuery {
   status?: ConversationStatus;
   category?: ConversationCategory;
@@ -173,6 +199,24 @@ export interface CreateMessageDto {
   content: string;
 }
 
+export interface ConversationMessage {
+  id: string;
+  conversationId: string;
+  senderType: SenderType;
+  content: string;
+  createdAt: Date | string;
+  readAt: Date | string | null;
+}
+
+export interface StudentDirectoryItem {
+  id: string;
+  studentIdentifier: string | null;
+  createdAt: Date | string;
+  _count: {
+    conversations: number;
+  };
+}
+
 // ==========================================
 // Dashboard Statistics DTOs
 // ==========================================
@@ -180,6 +224,7 @@ export interface CreateMessageDto {
 export interface DashboardStatistics {
   totalConversations: number;
   unansweredCount: number;
+  inProgressCount: number;
   answeredCount: number;
   closedCount: number;
   averageResponseTimeMinutes: number | null;

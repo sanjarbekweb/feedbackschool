@@ -10,7 +10,10 @@ import {
   UserRole,
   CurrentUser,
   PaginatedResponse,
+  ConversationDetail,
+  ConversationListItem,
 } from '@psychology/types';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 import { UsersService } from '../users/users.service';
 import { AuditService } from '../audit/audit.service';
@@ -131,12 +134,12 @@ export class ConversationsService {
   async findAll(
     filter: ConversationFilterDto,
     currentUser: CurrentUser,
-  ): Promise<PaginatedResponse<any>> {
-    const page = filter.page || 1;
-    const limit = filter.limit || 20;
+  ): Promise<PaginatedResponse<ConversationListItem>> {
+    const page = filter.page;
+    const limit = filter.limit;
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.ConversationWhereInput = {};
 
     // Ownership enforcement: students only see their own cases
     if (currentUser.role === UserRole.STUDENT) {
@@ -158,7 +161,9 @@ export class ConversationsService {
       };
     }
 
-    let orderBy: any = { lastMessageAt: 'desc' };
+    let orderBy: Prisma.ConversationOrderByWithRelationInput = {
+      lastMessageAt: 'desc',
+    };
     if (filter.sortBy === 'newest') {
       orderBy = { createdAt: 'desc' };
     } else if (filter.sortBy === 'oldest') {
@@ -168,10 +173,15 @@ export class ConversationsService {
     const [conversations, total] = await Promise.all([
       this.prisma.conversation.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          caseId: true,
+          status: true,
+          category: true,
+          createdAt: true,
+          lastMessageAt: true,
           student: {
             select: {
-              id: true,
               studentIdentifier: true,
             },
           },
@@ -204,13 +214,20 @@ export class ConversationsService {
   /**
    * Retrieves single conversation by ID.
    */
-  async findOne(id: string) {
+  async findOne(id: string): Promise<ConversationDetail & { studentId: string }> {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        studentId: true,
+        caseId: true,
+        status: true,
+        category: true,
+        createdAt: true,
+        updatedAt: true,
+        lastMessageAt: true,
         student: {
           select: {
-            id: true,
             studentIdentifier: true,
           },
         },

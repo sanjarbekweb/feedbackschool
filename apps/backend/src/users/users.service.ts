@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { UserRole } from '@psychology/types';
+import { PaginatedResponse, StudentDirectoryItem, UserRole } from '@psychology/types';
 import { PrismaService } from '../database/prisma.service';
 
 @Injectable()
@@ -49,7 +49,10 @@ export class UsersService {
     });
   }
 
-  async listStudents(page = 1, limit = 20) {
+  async listStudents(
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedResponse<StudentDirectoryItem>> {
     const skip = (page - 1) * limit;
     const [students, total] = await Promise.all([
       this.prisma.user.findMany({
@@ -71,13 +74,17 @@ export class UsersService {
       }),
     ]);
 
+    const totalPages = Math.ceil(total / limit);
+
     return {
       data: students,
       meta: {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit),
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
       },
     };
   }

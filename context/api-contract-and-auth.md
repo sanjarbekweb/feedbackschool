@@ -18,7 +18,7 @@ This document details the REST API surface, Server-Sent Events (SSE) realtime co
   }
   ```
 - **Session Duration**: 24 hours.
-- **CSRF Protection**: Enforced on mutating state endpoints (`POST`, `PATCH`, `DELETE`).
+- **Cross-site request protection**: Cookie-authenticated mutating requests require an allowed `Origin` (Telegram webhook routes are exempt). A synchronizer-token CSRF layer remains a follow-up hardening item for deployments that need defense in depth.
 - **Endpoints**:
   - `POST /api/auth/login`: Validates credentials, issues HttpOnly cookie.
   - `POST /api/auth/logout`: Clears the session cookie.

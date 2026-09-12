@@ -15,9 +15,11 @@ import {
   LogOut,
   ShieldCheck,
   Radio,
+  X,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { ConnectionStatus } from '@/lib/sse';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface SidebarProps {
   connectionStatus: ConnectionStatus;
@@ -37,6 +39,7 @@ const NAV_ITEMS = [
 export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleLogout = async () => {
     try {
@@ -44,7 +47,8 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
     } catch {
       // Proceed with redirect regardless of network error
     } finally {
-      router.push('/login');
+      queryClient.clear();
+      router.replace('/login');
     }
   };
 
@@ -52,7 +56,7 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
     <aside className="w-64 h-full bg-surface border-r border-border-default flex flex-col justify-between select-none">
       {/* Brand Header */}
       <div>
-        <div className="h-16 flex items-center px-6 border-b border-border-default gap-3">
+        <div className="h-16 flex items-center px-4 sm:px-6 border-b border-border-default gap-3">
           <div className="w-9 h-9 rounded-lg bg-accent-soft text-accent-primary-dark flex items-center justify-center border border-accent-secondary/30 shadow-xs">
             <ShieldCheck className="w-5 h-5 text-accent-primary" />
           </div>
@@ -64,6 +68,16 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
               Student Support Triage
             </span>
           </div>
+          {onCloseMobile && (
+            <button
+              type="button"
+              onClick={onCloseMobile}
+              className="ml-auto rounded-lg p-2 text-text-muted hover:bg-base hover:text-text-primary"
+              aria-label="Close navigation menu"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
         {/* Navigation Items */}

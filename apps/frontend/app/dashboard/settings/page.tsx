@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import {
   Settings,
@@ -18,6 +18,7 @@ import { apiClient } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['currentUser'],
@@ -31,7 +32,8 @@ export default function SettingsPage() {
     try {
       await apiClient('/api/auth/logout', { method: 'POST' });
     } finally {
-      router.push('/login');
+      queryClient.clear();
+      router.replace('/login');
     }
   };
 

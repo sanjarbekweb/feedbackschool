@@ -4,7 +4,7 @@ Update this file after every meaningful implementation change.
 
 ## Current Phase
 
-- Project-wide remediation — authentication and database foundation (IN PROGRESS)
+- Project-wide remediation — API, integration, performance, and UX (IN PROGRESS)
 
 ## Current Goal
 
@@ -72,7 +72,9 @@ Update this file after every meaningful implementation change.
     - Verified IDOR protection (server-side ownership check returning 404 on unowned cases).
     - Verified XSS mitigation (automatic output encoding in React/Next.js, class-validator sanitization).
     - Verified SQL injection protection (Prisma ORM parameterized queries).
-    - Verified CSRF & Cookie security (`SameSite: 'none'`, `secure: true` in production, `HttpOnly`, plus Bearer token extractor).
+    - Verified cookie security (`SameSite: 'none'`, `secure: true` in production,
+      `HttpOnly`) and added an allowed-origin check for cookie-authenticated mutations;
+      a synchronizer CSRF token remains a later hardening item.
     - Verified zero message content leakage (audit logs, Pino request logs, staff group alerts).
     - Verified student identity enumeration prevention (anonymized `Student #S-xxxx` in staff directories).
     - Verified secrets management (no secrets in Git, `.env*` ignored, comprehensive `.env.example` templates created).
@@ -87,12 +89,16 @@ Update this file after every meaningful implementation change.
 
 ## In Progress
 
-- Repairing the shared paginated API contract and frontend consumers.
+- Completing production configuration validation and end-to-end verification.
 
 ## Next Up
 
-- Implement the case status state machine and student follow-up transition.
-- Add CSRF protection and complete typed production configuration validation.
+- Add durable Telegram `update_id` idempotency and persisted bot sessions before
+  enabling concurrent webhook delivery or horizontal backend scaling.
+- Complete typed production configuration validation and add API/browser end-to-end
+  tests for login, pagination, web reply, Telegram reply, and SSE invalidation.
+- Collect p50/p95 latency and query-plan evidence before considering a Fastify
+  adapter migration or shared cache infrastructure.
 
 ## Remediation Work Completed
 
@@ -112,6 +118,31 @@ Update this file after every meaningful implementation change.
   revoked and the corrected logging behavior was verified.
 - Added the missing message-sender foreign-key index and removed the redundant email
   lookup index.
+- Repaired paginated REST responses end to end. Conversations, messages, and
+  students retain typed metadata; page limits are validated and capped, and the
+  dashboard no longer relies on `any` for those resources.
+- Reduced Prisma payloads to fields each client uses and removed the unused sender
+  join from message history reads.
+- Implemented the cross-channel status rule: student follow-ups reopen an active
+  case as `UNANSWERED`, notify staff without content, and refresh dashboard case and
+  statistic queries through named SSE events.
+- Added SSE heartbeats and bounded reconnect backoff, a protected dashboard session
+  gate, cache clearing on logout, accessible mobile drawer controls, visible keyboard
+  focus, and reduced-motion handling.
+- Added privacy-safe caching: backend responses are `private, no-store`; dashboard
+  query data uses a short per-session memory cache invalidated by SSE.
+- Replaced the placeholder response-time value with a PostgreSQL first-response
+  average and included `IN_PROGRESS` in statistics and filters.
+- Applied composite triage/message indexes to Supabase and synchronized all four
+  Prisma migrations. Advisor findings are informational only; new indexes will
+  remain reported as unused until representative traffic arrives.
+- Stopped discarding pending Telegram updates during restart, made webhook URL and
+  secret mandatory in webhook mode, constrained allowed update types, and split
+  long history output without parsing student content as Markdown.
+- Restored the NestJS and Next.js ESLint gate; it now runs successfully without
+  warnings or errors.
+- Added origin validation for cookie-authenticated mutations and stopped exposing
+  internal database or unexpected exception messages in public responses.
 
 ## Open Questions & Resolved Defaults
 

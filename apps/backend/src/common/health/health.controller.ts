@@ -17,11 +17,10 @@ export class HealthController {
         service: 'psychology-support-backend',
         uptime: process.uptime(),
       });
-    } catch (error: any) {
+    } catch {
       return res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
         status: 'degraded',
         database: 'disconnected',
-        error: error.message,
         timestamp: new Date().toISOString(),
         service: 'psychology-support-backend',
       });

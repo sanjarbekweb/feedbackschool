@@ -52,7 +52,10 @@ describe('Telegram Webhook & Controller', () => {
       {} as any,
     );
 
-    realService.handleStudentWebhook({}, mockRes as any);
+    realService.handleStudentWebhook(
+      {} as Parameters<TelegramService['handleStudentWebhook']>[0],
+      mockRes as any,
+    );
     expect(mockRes.status).toHaveBeenCalledWith(200);
     expect(mockRes.json).toHaveBeenCalledWith({ ok: true, status: 'dormant_or_polling' });
   });

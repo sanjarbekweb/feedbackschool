@@ -1,4 +1,8 @@
-import { ApiResponse } from '@psychology/types';
+import {
+  ApiResponse,
+  PaginatedResponse,
+  PaginationMeta,
+} from '@psychology/types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -7,16 +11,17 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public details?: unknown,
+    public status?: number,
   ) {
     super(message);
     this.name = 'ApiError';
   }
 }
 
-export async function apiClient<T>(
+async function requestEnvelope<T, TMeta = never>(
   endpoint: string,
   options: RequestInit = {},
-): Promise<T> {
+): Promise<ApiResponse<T, TMeta>> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
   const defaultHeaders: HeadersInit = {
@@ -33,7 +38,7 @@ export async function apiClient<T>(
     credentials: 'include', // Includes HTTP-only session cookies
   });
 
-  const data: ApiResponse<T> = await response.json().catch(() => ({
+  const data: ApiResponse<T, TMeta> = await response.json().catch(() => ({
     success: false,
     error: {
       code: 'PARSE_ERROR',
@@ -46,8 +51,36 @@ export async function apiClient<T>(
       data.error?.code || 'UNKNOWN_ERROR',
       data.error?.message || `Request failed with status ${response.status}`,
       data.error?.details,
+      response.status,
     );
   }
 
-  return data.data as T;
+  return data;
+}
+
+export async function apiClient<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  const response = await requestEnvelope<T>(endpoint, options);
+  return response.data as T;
+}
+
+export async function paginatedApiClient<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<PaginatedResponse<T>> {
+  const response = await requestEnvelope<T[], PaginationMeta>(endpoint, options);
+
+  if (!Array.isArray(response.data) || !response.meta) {
+    throw new ApiError(
+      'INVALID_PAGINATION_RESPONSE',
+      'Server response did not include pagination metadata',
+    );
+  }
+
+  return {
+    data: response.data,
+    meta: response.meta,
+  };
 }

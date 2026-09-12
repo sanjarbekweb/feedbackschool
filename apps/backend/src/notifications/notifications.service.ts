@@ -6,6 +6,7 @@ export interface StaffNotificationPayload {
   category: ConversationCategory;
   status: ConversationStatus;
   timestamp: string;
+  reason?: 'NEW_CONVERSATION' | 'STUDENT_FOLLOW_UP';
 }
 
 export type StaffGroupNotifier = (formattedText: string) => Promise<void>;
@@ -39,7 +40,7 @@ export class NotificationsService {
    * Only case ID, category, status, and timestamp.
    */
   async notifyStaffGroup(payload: StaffNotificationPayload): Promise<void> {
-    const { caseId, category, status, timestamp } = payload;
+    const { caseId, category, status, timestamp, reason = 'NEW_CONVERSATION' } = payload;
 
     this.logger.log(
       `[Staff Notification] Case=${caseId} Category=${category} Status=${status} Time=${timestamp}`,
@@ -51,19 +52,25 @@ export class NotificationsService {
       minute: '2-digit',
     });
 
+    const title =
+      reason === 'STUDENT_FOLLOW_UP'
+        ? 'Student follow-up received'
+        : 'New psychology support request';
+
     const formattedText =
-      `🔔 *New psychology support request*\n\n` +
+      `🔔 *${title}*\n\n` +
       `Case: *${caseId}*\n` +
       `Category: ${categoryLabel}\n` +
-      `Status: ⏳ Unanswered\n` +
+      `Status: ${status === ConversationStatus.UNANSWERED ? '⏳ Unanswered' : status}\n` +
       `Received: ${timeFormatted}\n\n` +
       `Open in staff bot or dashboard to review and reply.`;
 
     if (this.staffGroupNotifier) {
       try {
         await this.staffGroupNotifier(formattedText);
-      } catch (err: any) {
-        this.logger.error(`Failed to send staff group notification: ${err.message}`, err.stack);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Failed to send staff group notification: ${message}`);
       }
     }
   }
@@ -81,8 +88,9 @@ export class NotificationsService {
     if (this.studentNotifier) {
       try {
         await this.studentNotifier(studentTelegramId, caseId, messageText);
-      } catch (err: any) {
-        this.logger.error(`Failed to send student notification: ${err.message}`, err.stack);
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Failed to send student notification: ${message}`);
       }
     }
   }

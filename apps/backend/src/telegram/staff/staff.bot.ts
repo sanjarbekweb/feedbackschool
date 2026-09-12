@@ -9,11 +9,16 @@ import {
   StaffSessionData,
   StaffSessionState,
 } from '../types/session';
+import { splitTelegramText } from '../utils/telegram-text';
+import { ConversationFilterDto } from '../../conversations/dto/conversation-filter.dto';
 import {
   ConversationStatus,
+  CurrentUser,
   SenderType,
   UserRole,
 } from '@psychology/types';
+
+type StaffContext = Context & { staffUser?: CurrentUser };
 
 const CATEGORY_LABELS: Record<string, string> = {
   GENERAL: 'General Inquiry',
@@ -87,8 +92,16 @@ export class StaffBotController {
     }
 
     // Attach authenticated staff user to context state for subsequent handlers
-    (ctx as any).staffUser = user;
+    (ctx as StaffContext).staffUser = user;
     await next();
+  }
+
+  private requireStaffUser(ctx: Context): CurrentUser {
+    const user = (ctx as StaffContext).staffUser;
+    if (!user) {
+      throw new Error('Authenticated staff context is missing.');
+    }
+    return user;
   }
 
   private registerMiddlewareAndHandlers() {
@@ -213,8 +226,8 @@ export class StaffBotController {
   }
 
   private async sendCaseList(ctx: Context, filter: string, page: number) {
-    const staffUser = (ctx as any).staffUser;
-    const filterDto: any = { page, limit: 5 };
+    const staffUser = this.requireStaffUser(ctx);
+    const filterDto: ConversationFilterDto = { page, limit: 5 };
 
     if (filter === 'UNANSWERED') {
       filterDto.status = ConversationStatus.UNANSWERED;
@@ -246,7 +259,7 @@ export class StaffBotController {
     await ctx.reply(messageText, {
       parse_mode: 'Markdown',
       reply_markup: StaffKeyboards.caseList(
-        result.data.map((c: any) => ({ id: c.id, caseId: c.caseId })),
+        result.data.map((c) => ({ id: c.id, caseId: c.caseId })),
         filter,
         result.meta.page,
         result.meta.totalPages,
@@ -265,7 +278,7 @@ export class StaffBotController {
     if (conv.status === ConversationStatus.ANSWERED) statusLabel = '✅ Answered';
     if (conv.status === ConversationStatus.CLOSED) statusLabel = '🔒 Closed';
 
-    let text = `Case *${conv.caseId}*\n` +
+    let text = `Case ${conv.caseId}\n` +
       `Student: ${studentAnon}\n` +
       `Category: ${cat}\n` +
       `Status: ${statusLabel}\n` +
@@ -288,10 +301,15 @@ export class StaffBotController {
 
     const isClosed = conv.status === ConversationStatus.CLOSED;
 
-    await ctx.reply(text, {
-      parse_mode: 'Markdown',
-      reply_markup: StaffKeyboards.caseDetail(conv.id, isClosed),
-    });
+    const chunks = splitTelegramText(text);
+    for (const [index, chunk] of chunks.entries()) {
+      await ctx.reply(
+        chunk,
+        index === chunks.length - 1
+          ? { reply_markup: StaffKeyboards.caseDetail(conv.id, isClosed) }
+          : undefined,
+      );
+    }
   }
 
   private async handleStartReply(ctx: Context, conversationId: string) {
@@ -319,7 +337,7 @@ export class StaffBotController {
     content: string,
   ) {
     if (!session.activeConversationId) return;
-    const staffUser = (ctx as any).staffUser;
+    const staffUser = this.requireStaffUser(ctx);
 
     try {
       await this.messagesService.addMessage(
@@ -338,14 +356,15 @@ export class StaffBotController {
           reply_markup: StaffKeyboards.mainMenu(),
         },
       );
-    } catch (err: any) {
-      this.logger.error(`Error sending staff response: ${err.message}`, err.stack);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error sending staff response: ${message}`);
       await ctx.reply('An error occurred while sending the response.');
     }
   }
 
   private async handleMarkAnswered(ctx: Context, conversationId: string) {
-    const staffUser = (ctx as any).staffUser;
+    const staffUser = this.requireStaffUser(ctx);
     await this.conversationsService.update(
       conversationId,
       { status: ConversationStatus.ANSWERED },
@@ -355,7 +374,7 @@ export class StaffBotController {
   }
 
   private async handleCloseCase(ctx: Context, conversationId: string) {
-    const staffUser = (ctx as any).staffUser;
+    const staffUser = this.requireStaffUser(ctx);
     await this.conversationsService.update(
       conversationId,
       { status: ConversationStatus.CLOSED },
@@ -378,7 +397,7 @@ export class StaffBotController {
 
     for (const student of result.data) {
       const code = student.studentIdentifier || 'S-????';
-      const casesCount = (student as any)._count?.conversations ?? 0;
+      const casesCount = student._count.conversations;
       text += `• Student #${code} — ${casesCount} case(s)\n`;
     }
 

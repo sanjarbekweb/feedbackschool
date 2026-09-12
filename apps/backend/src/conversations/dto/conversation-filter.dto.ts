@@ -1,8 +1,8 @@
-import { IsEnum, IsOptional, IsString, IsInt, Min } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { ConversationCategory, ConversationStatus } from '@psychology/types';
+import { PaginationDto } from '../../common/dto/pagination.dto';
 
-export class ConversationFilterDto {
+export class ConversationFilterDto extends PaginationDto {
   @IsEnum(ConversationStatus)
   @IsOptional()
   status?: ConversationStatus;
@@ -12,22 +12,11 @@ export class ConversationFilterDto {
   category?: ConversationCategory;
 
   @IsString()
+  @MaxLength(32)
   @IsOptional()
   search?: string;
 
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  page?: number = 1;
-
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @IsOptional()
-  limit?: number = 20;
-
-  @IsString()
+  @IsIn(['newest', 'oldest', 'lastMessage'])
   @IsOptional()
   sortBy?: 'newest' | 'oldest' | 'lastMessage' = 'lastMessage';
 }

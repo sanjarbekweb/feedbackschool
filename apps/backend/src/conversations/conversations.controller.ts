@@ -19,7 +19,15 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { ConversationOwnershipGuard } from '../common/guards/ownership.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
-import { CurrentUser as CurrentUserType, UserRole, ApiResponse } from '@psychology/types';
+import {
+  ApiResponse,
+  Conversation,
+  ConversationDetail,
+  ConversationListItem,
+  CurrentUser as CurrentUserType,
+  PaginatedApiResponse,
+  UserRole,
+} from '@psychology/types';
 
 @Controller('conversations')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -30,19 +38,20 @@ export class ConversationsController {
   async findAll(
     @Query() filter: ConversationFilterDto,
     @CurrentUser() user: CurrentUserType,
-  ): Promise<ApiResponse<any>> {
+  ): Promise<PaginatedApiResponse<ConversationListItem>> {
     const result = await this.conversationsService.findAll(filter, user);
     return {
       success: true,
       data: result.data,
-      ...({ meta: result.meta } as any),
+      meta: result.meta,
     };
   }
 
   @Get(':id')
   @UseGuards(ConversationOwnershipGuard)
-  async findOne(@Param('id') id: string): Promise<ApiResponse<any>> {
-    const conversation = await this.conversationsService.findOne(id);
+  async findOne(@Param('id') id: string): Promise<ApiResponse<ConversationDetail>> {
+    const { studentId: _studentId, ...conversation } =
+      await this.conversationsService.findOne(id);
     return {
       success: true,
       data: conversation,
@@ -54,7 +63,7 @@ export class ConversationsController {
   async create(
     @Body() dto: CreateConversationDto,
     @CurrentUser() user: CurrentUserType,
-  ): Promise<ApiResponse<any>> {
+  ): Promise<ApiResponse<Conversation>> {
     const conversation = await this.conversationsService.createConversation(dto, user);
     return {
       success: true,
@@ -68,7 +77,7 @@ export class ConversationsController {
     @Param('id') id: string,
     @Body() dto: UpdateConversationDto,
     @CurrentUser() user: CurrentUserType,
-  ): Promise<ApiResponse<any>> {
+  ): Promise<ApiResponse<Conversation>> {
     const conversation = await this.conversationsService.update(id, dto, user);
     return {
       success: true,
