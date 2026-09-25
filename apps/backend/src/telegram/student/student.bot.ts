@@ -1,4 +1,5 @@
-import { Bot, Context } from 'grammy';
+import { persistentSession } from '../utils/session-middleware';
+import { Bot, Context, InlineKeyboard } from 'grammy';
 import { Logger } from '@nestjs/common';
 import { ConversationsService } from '../../conversations/conversations.service';
 import { MessagesService } from '../../messages/messages.service';
@@ -17,11 +18,11 @@ import {
 } from '@psychology/types';
 
 const CATEGORY_LABELS: Record<string, string> = {
-  GENERAL: 'General Inquiry',
-  ACADEMIC: 'Academic Stress',
-  PERSONAL: 'Personal / Emotional',
-  SOCIAL: 'Social / Relationships',
-  URGENT: 'Urgent Support',
+  GENERAL: 'Umumiy savol',
+  ACADEMIC: 'O‘qish',
+  PERSONAL: 'Shaxsiy masala',
+  SOCIAL: 'Munosabatlar',
+  URGENT: 'Shoshilinch yordam',
 };
 
 export class StudentBotController {
@@ -34,6 +35,7 @@ export class StudentBotController {
     private readonly messagesService: MessagesService,
     private readonly usersService: UsersService,
   ) {
+    this.bot.use(persistentSession('student', this.sessions, this.usersService));
     this.registerHandlers();
   }
 
@@ -62,15 +64,12 @@ export class StudentBotController {
     });
 
     // Reply keyboard triggers
-    this.bot.hears('📝 Send a message', async (ctx) => {
+    this.bot.hears('📝 Xabar yozish', async (ctx) => {
       if (!ctx.from) return;
-      this.setSession(ctx.from.id, { state: StudentSessionState.AWAITING_CATEGORY });
-      await ctx.reply('Please choose a category that best describes your request:', {
-        reply_markup: StudentKeyboards.categories(),
-      });
+      await this.sendRecipients(ctx);
     });
 
-    this.bot.hears('📨 My messages', async (ctx) => {
+    this.bot.hears('📨 Mening xabarlarim', async (ctx) => {
       if (!ctx.from) return;
       this.resetSession(ctx.from.id);
       await this.sendConversationsList(ctx, 1);
@@ -95,15 +94,32 @@ export class StudentBotController {
       }
 
       if (data === 'student:cancel') {
-        await ctx.answerCallbackQuery({ text: 'Cancelled' });
+        await ctx.answerCallbackQuery({ text: 'Bekor qilindi' });
         this.resetSession(userId);
-        await ctx.reply('Message creation cancelled.');
+        await ctx.reply('Bekor qilindi.');
         await this.sendMainMenu(ctx);
+        return;
+      }
+
+      if (data.startsWith('recipient:')) {
+        const roleId = data.substring(10);
+        const roles = await this.usersService.listRoles(true);
+        if (!roles.some(role => role.id === roleId)) {
+          await ctx.answerCallbackQuery({ text: 'Qabul qiluvchi mavjud emas.' });
+          return;
+        }
+        this.setSession(userId, { state: StudentSessionState.AWAITING_CATEGORY, recipientRoleId: roleId });
+        await ctx.answerCallbackQuery();
+        await ctx.reply('Mavzuni tanlang:', { reply_markup: StudentKeyboards.categories() });
         return;
       }
 
       if (data.startsWith('cat:')) {
         const category = data.substring(4) as ConversationCategory;
+        if (!Object.values(ConversationCategory).includes(category) || !this.getSession(userId).recipientRoleId) {
+          await ctx.answerCallbackQuery({ text: 'Avval qabul qiluvchini tanlang.' });
+          return;
+        }
         await ctx.answerCallbackQuery();
         this.setSession(userId, {
           state: StudentSessionState.AWAITING_INITIAL_MESSAGE,
@@ -112,7 +128,8 @@ export class StudentBotController {
 
         const label = CATEGORY_LABELS[category] || category;
         await ctx.reply(
-          `Category selected: *${label}*\n\nPlease write your message below. Take your time.\nYour message is strictly confidential between you and the psychology team.`,
+          `Mavzu: ${label}
+Xabaringizni yozing.`,
           { parse_mode: 'Markdown' },
         );
         return;
@@ -128,6 +145,13 @@ export class StudentBotController {
         const page = parseInt(data.substring(13), 10) || 1;
         await ctx.answerCallbackQuery();
         await this.sendConversationsList(ctx, page);
+        return;
+      }
+
+      if (data.startsWith('student:history:')) {
+        const [, , id = '', pageText = '1'] = data.split(':');
+        await ctx.answerCallbackQuery();
+        await this.sendConversationDetail(ctx, id, Math.max(1, parseInt(pageText, 10) || 1));
         return;
       }
 
@@ -160,7 +184,7 @@ export class StudentBotController {
       ) {
         if (!ctx.message.text) {
           await ctx.reply(
-            'Please send your message as text. For confidentiality and privacy reasons, media attachments are not supported.',
+            'Faqat matn yuboring.',
           );
           return;
         }
@@ -168,7 +192,7 @@ export class StudentBotController {
         const text = ctx.message.text.trim();
         if (text.length > 4000) {
           await ctx.reply(
-            'Your message is too long. Please keep it under 4000 characters.',
+            'Xabar 4000 belgidan oshmasin.',
           );
           return;
         }
@@ -186,9 +210,20 @@ export class StudentBotController {
     });
   }
 
+  private async sendRecipients(ctx: Context) {
+    if (!ctx.from) return;
+    this.resetSession(ctx.from.id);
+    const roles = await this.usersService.listRoles(true);
+    if (!roles.length) { await ctx.reply('Hozircha qabul qiluvchi yo‘q. Keyinroq urinib ko‘ring.'); return; }
+    const keyboard = new InlineKeyboard();
+    for (const role of roles) keyboard.text(role.name, `recipient:${role.id}`).row();
+    keyboard.text('Bekor qilish', 'student:cancel');
+    await ctx.reply('Kimga yozmoqchisiz?', { reply_markup: keyboard });
+  }
+
   private async sendMainMenu(ctx: Context) {
     await ctx.reply(
-      'Welcome.\n\nThis is the school\'s psychology support system.\n\nYour messages are handled privately by authorized psychology staff.\n\nWhat would you like to do?',
+      'Assalomu alaykum! Maktab xodimlariga shu yerda yozishingiz mumkin.',
       { reply_markup: StudentKeyboards.mainMenu() },
     );
   }
@@ -205,13 +240,13 @@ export class StudentBotController {
 
     if (result.meta.total === 0) {
       await ctx.reply(
-        'You don\'t have any messages yet. Click "📝 Send a message" below to reach out to the psychology staff.',
+        'Hali xabar yo‘q. «📝 Xabar yozish»ni bosing.',
         { reply_markup: StudentKeyboards.mainMenu() },
       );
       return;
     }
 
-    const messageText = `📨 *My messages* (Page ${result.meta.page}/${result.meta.totalPages})\n\nSelect a case to view history or continue the conversation:`;
+    const messageText = `📨 *Mening xabarlarim* (Sahifa ${result.meta.page}/${result.meta.totalPages})\n\nMurojaatni tanlang:`;
 
     await ctx.reply(messageText, {
       parse_mode: 'Markdown',
@@ -227,7 +262,7 @@ export class StudentBotController {
     });
   }
 
-  private async sendConversationDetail(ctx: Context, conversationId: string) {
+  private async sendConversationDetail(ctx: Context, conversationId: string, page = 1) {
     if (!ctx.from) return;
     const telegramId = String(ctx.from.id);
     const studentUser = await this.usersService.getOrCreateStudent(telegramId);
@@ -236,31 +271,24 @@ export class StudentBotController {
 
     // Strict ownership verification: students can only access their own cases!
     if (conv.studentId !== studentUser.id) {
-      await ctx.reply('Case not found.');
+      await ctx.reply('Murojaat topilmadi.');
       return;
     }
 
-    const messagesResult = await this.messagesService.getMessages(conversationId, 1, 50);
+    const messagesResult = await this.messagesService.getMessages(conversationId, page, 5);
 
     const categoryLabel = CATEGORY_LABELS[conv.category] || conv.category;
-    let statusLabel = '⏳ Unanswered';
+    let statusLabel = '⏳ Javob kutilmoqda';
     if (conv.status === ConversationStatus.ANSWERED) {
-      statusLabel = '💬 Response available';
+      statusLabel = '💬 Javob keldi';
     } else if (conv.status === ConversationStatus.CLOSED) {
-      statusLabel = '🔒 Closed';
+      statusLabel = '🔒 Yopilgan';
     }
 
-    let text = `Case ${conv.caseId}\nStatus: ${statusLabel}\nCategory: ${categoryLabel}\n────────────────────────\n`;
+    let text = `Murojaat ${conv.caseId}\nHolat: ${statusLabel}\nMavzu: ${categoryLabel}\n────────────────────────\n`;
 
     for (const msg of messagesResult.data) {
-      const timeStr = new Date(msg.createdAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const senderHeader =
-        msg.senderType === SenderType.STUDENT ? `🧑 You (${timeStr}):` : `👩‍⚕️ Psychology Staff (${timeStr}):`;
+      const senderHeader = msg.senderType === SenderType.STUDENT ? '🧑 Siz:' : '💬 Xodim:';
       text += `\n${senderHeader}\n${msg.content}\n`;
     }
 
@@ -273,7 +301,7 @@ export class StudentBotController {
       await ctx.reply(
         chunk,
         index === chunks.length - 1
-          ? { reply_markup: StudentKeyboards.conversationDetail(conv.id, isClosed) }
+          ? { reply_markup: StudentKeyboards.conversationDetail(conv.id, isClosed, messagesResult.meta.page, messagesResult.meta.totalPages) }
           : undefined,
       );
     }
@@ -286,12 +314,12 @@ export class StudentBotController {
 
     const conv = await this.conversationsService.findOne(conversationId);
     if (conv.studentId !== studentUser.id) {
-      await ctx.reply('Case not found.');
+      await ctx.reply('Murojaat topilmadi.');
       return;
     }
 
     if (conv.status === ConversationStatus.CLOSED) {
-      await ctx.reply('This case is closed. Please start a new message if you need further support.');
+      await ctx.reply('Murojaat yopilgan. Yangi murojaat yuborishingiz mumkin.');
       return;
     }
 
@@ -302,7 +330,7 @@ export class StudentBotController {
     });
 
     await ctx.reply(
-      `Replying to Case *${conv.caseId}*.\n\nPlease write your follow-up message below:`,
+      `${conv.caseId}: xabaringizni yozing.`,
       { parse_mode: 'Markdown' },
     );
   }
@@ -319,25 +347,24 @@ export class StudentBotController {
     try {
       const conv = await this.conversationsService.createConversation({
         studentTelegramId: telegramId,
+        recipientRoleId: session.recipientRoleId,
         category,
         initialMessage,
-      });
+      }, undefined, ctx.update?.update_id === undefined ? undefined : `student:${ctx.update.update_id}`);
 
       this.resetSession(ctx.from.id);
 
-      const categoryLabel = CATEGORY_LABELS[category] || category;
 
       await ctx.reply(
-        `Your message has been received.\n\nCase: *${conv.caseId}*\nCategory: ${categoryLabel}\nStatus: ⏳ Unanswered\n\nA member of the psychology staff will review it. You can check the status at any time in "My messages".`,
+        `✅ ${conv.caseId}: xabaringiz yuborildi.`,
         {
           parse_mode: 'Markdown',
           reply_markup: StudentKeyboards.mainMenu(),
         },
       );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error creating conversation: ${message}`);
-      await ctx.reply('An error occurred while sending your message. Please try again later.');
+    } catch {
+      this.logger.error('Bot amalini bajarib bo‘lmadi.');
+      await ctx.reply('Xabar yuborilmadi. Qayta urinib ko‘ring.');
     }
   }
 
@@ -355,22 +382,22 @@ export class StudentBotController {
         session.activeConversationId,
         { content },
         { id: studentUser.id, role: UserRole.STUDENT, telegramId },
+        ctx.update?.update_id === undefined ? undefined : `student:${ctx.update.update_id}`,
       );
 
       const caseId = session.activeCaseId || '';
       this.resetSession(ctx.from.id);
 
       await ctx.reply(
-        `Your follow-up message has been received for Case *${caseId}*.\n\nThe psychology staff will review it shortly.`,
+        `✅ ${caseId}: xabaringiz yuborildi.`,
         {
           parse_mode: 'Markdown',
           reply_markup: StudentKeyboards.mainMenu(),
         },
       );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error sending follow-up: ${message}`);
-      await ctx.reply('An error occurred while sending your message. Please try again later.');
+    } catch {
+      this.logger.error('Bot amalini bajarib bo‘lmadi.');
+      await ctx.reply('Xabar yuborilmadi. Qayta urinib ko‘ring.');
     }
   }
 }

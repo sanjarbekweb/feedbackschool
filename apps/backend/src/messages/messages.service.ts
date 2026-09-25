@@ -1,3 +1,4 @@
+import { assertConversationAccess } from '../common/conversation-access';
 import {
   Injectable,
   NotFoundException,
@@ -49,7 +50,7 @@ export class MessagesService {
         },
         skip,
         take: limit,
-        orderBy: { createdAt: 'asc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       }),
       this.prisma.message.count({
         where: { conversationId },
@@ -59,7 +60,7 @@ export class MessagesService {
     const totalPages = Math.ceil(total / limit);
 
     return {
-      data: messages,
+      data: messages.reverse(),
       meta: {
         total,
         page,
@@ -79,6 +80,7 @@ export class MessagesService {
     conversationId: string,
     dto: CreateMessageDto,
     sender: CurrentUser,
+    sourceKey?: string,
   ): Promise<ConversationMessage & { senderId: string }> {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
@@ -88,11 +90,18 @@ export class MessagesService {
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversation not found.');
+      throw new NotFoundException('Murojaat topilmadi.');
     }
 
+    assertConversationAccess(conversation, sender);
+    if (!dto.content.trim() || dto.content.length > 4000) throw new BadRequestException('Xabar 1–4000 belgidan iborat bo‘lsin.');
+
+    if (sourceKey) {
+      const existing = await this.prisma.message.findUnique({ where: { sourceKey } });
+      if (existing && existing.senderId === sender.id && existing.conversationId === conversationId) return existing;
+    }
     if (conversation.status === ConversationStatus.CLOSED) {
-      throw new BadRequestException('Cannot send messages to a closed conversation.');
+      throw new BadRequestException('Murojaat yopilgan.');
     }
 
     const senderType =
@@ -104,12 +113,16 @@ export class MessagesService {
       : ConversationStatus.UNANSWERED;
 
     const result = await this.prisma.$transaction(async (tx) => {
+      // Acquire the row lock before appending; a concurrent close cannot be lost.
+      const open = await tx.conversation.updateMany({ where: { id: conversationId, status: { not: ConversationStatus.CLOSED } }, data: { status: nextStatus } });
+      if (!open.count) throw new BadRequestException('Murojaat yopilgan.');
       const message = await tx.message.create({
         data: {
           conversationId,
           senderId: sender.id,
           senderType,
-          content: dto.content,
+          content: dto.content.trim(),
+          sourceKey,
         },
         select: {
           id: true,
@@ -135,6 +148,11 @@ export class MessagesService {
         },
       });
 
+      if (isStaffReply && conversation.student.telegramId) {
+        await this.notificationsService.enqueueStudent(tx, conversation.student.telegramId, conversation.caseId);
+      } else if (!isStaffReply) {
+        await this.notificationsService.enqueueStaff(tx, conversation.recipientRoleId, conversation.caseId);
+      }
       return { message, updatedConversation };
     });
 
@@ -155,6 +173,7 @@ export class MessagesService {
     // Realtime SSE event
     this.realtimeService.emit({
       type: 'MESSAGE_CREATED',
+      recipientRoleId: conversation.recipientRoleId,
       timestamp: createdAtIso,
       payload: {
         messageId: result.message.id,
@@ -167,6 +186,7 @@ export class MessagesService {
 
     this.realtimeService.emit({
       type: 'CONVERSATION_UPDATED',
+      recipientRoleId: conversation.recipientRoleId,
       timestamp: result.updatedConversation.updatedAt.toISOString(),
       payload: {
         conversationId,
@@ -176,22 +196,6 @@ export class MessagesService {
         updatedAt: result.updatedConversation.updatedAt.toISOString(),
       },
     });
-
-    // If staff responded, notify student via Telegram
-    if (isStaffReply && conversation.student.telegramId) {
-      await this.notificationsService.notifyStudentResponse(
-        conversation.student.telegramId,
-        conversation.caseId,
-      );
-    } else if (!isStaffReply) {
-      await this.notificationsService.notifyStaffGroup({
-        caseId: conversation.caseId,
-        category: conversation.category,
-        status: ConversationStatus.UNANSWERED,
-        timestamp: createdAtIso,
-        reason: 'STUDENT_FOLLOW_UP',
-      });
-    }
 
     return result.message;
   }

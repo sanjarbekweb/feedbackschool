@@ -39,17 +39,17 @@ export default function StatisticsPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-accent-primary-dark">
-          Analytics & Response Statistics
+          Statistika
         </h1>
         <p className="text-xs text-text-muted mt-1">
-          Support volume, response benchmarks, and triage metrics
+          Murojaatlar soni va javob vaqti
         </p>
       </div>
 
       {isLoading ? (
         <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-text-muted">
           <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
-          <span>Calculating metrics...</span>
+          <span>Hisoblanmoqda…</span>
         </div>
       ) : (
         <>
@@ -57,53 +57,53 @@ export default function StatisticsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="p-5 rounded-xl bg-surface border border-border-default shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-text-muted">Total Submissions</span>
+                <span className="text-xs text-text-muted">Jami murojaatlar</span>
                 <Inbox className="w-4 h-4 text-accent-primary" />
               </div>
               <span className="text-2xl font-bold text-text-primary mt-2 block">
                 {stats?.totalConversations ?? 0}
               </span>
               <span className="text-[11px] text-text-muted mt-1 block">
-                Lifetime cases opened
+                Barcha vaqt davomida
               </span>
             </div>
 
             <div className="p-5 rounded-xl bg-surface border border-amber-200/80 bg-amber-50/30 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-amber-800 font-medium">Unanswered</span>
+                <span className="text-xs text-amber-800 font-medium">Javob kutilmoqda</span>
                 <Clock className="w-4 h-4 text-amber-600" />
               </div>
               <span className="text-2xl font-bold text-amber-800 mt-2 block">
                 {stats?.unansweredCount ?? 0}
               </span>
               <span className="text-[11px] text-amber-700/80 mt-1 block">
-                {unansweredPct}% of active volume
+                {unansweredPct}% jami murojaatlardan
               </span>
             </div>
 
             <div className="p-5 rounded-xl bg-surface border border-emerald-200/80 bg-emerald-50/30 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-emerald-800 font-medium">Answered</span>
+                <span className="text-xs text-emerald-800 font-medium">Javob berilgan</span>
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
               </div>
               <span className="text-2xl font-bold text-emerald-800 mt-2 block">
                 {stats?.answeredCount ?? 0}
               </span>
               <span className="text-[11px] text-emerald-700/80 mt-1 block">
-                {answeredPct}% resolved or triaged
+                {answeredPct}% javob berilgan
               </span>
             </div>
 
             <div className="p-5 rounded-xl bg-surface border border-slate-200 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-600">Closed</span>
+                <span className="text-xs text-slate-600">Yopilgan</span>
                 <Lock className="w-4 h-4 text-slate-500" />
               </div>
               <span className="text-2xl font-bold text-slate-700 mt-2 block">
                 {stats?.closedCount ?? 0}
               </span>
               <span className="text-[11px] text-text-muted mt-1 block">
-                {closedPct}% fully archived
+                {closedPct}% yopilgan
               </span>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function StatisticsPage() {
             <div className="p-6 rounded-xl bg-surface border border-border-default shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-text-primary">
-                  Status Distribution
+                  Holatlar bo‘yicha
                 </h2>
                 <BarChart3 className="w-4 h-4 text-accent-primary" />
               </div>
@@ -124,41 +124,41 @@ export default function StatisticsPage() {
                 <div
                   style={{ width: `${inProgressPct}%` }}
                   className="bg-accent-primary h-full transition-all"
-                  title={`In progress: ${inProgressPct}%`}
+                  title={`Ko‘rib chiqilmoqda: ${inProgressPct}%`}
                 />
                 <div
                   style={{ width: `${unansweredPct}%` }}
                   className="bg-amber-400 h-full transition-all"
-                  title={`Unanswered: ${unansweredPct}%`}
+                  title={`Javob kutilmoqda: ${unansweredPct}%`}
                 />
                 <div
                   style={{ width: `${answeredPct}%` }}
                   className="bg-emerald-500 h-full transition-all"
-                  title={`Answered: ${answeredPct}%`}
+                  title={`Javob berilgan: ${answeredPct}%`}
                 />
                 <div
                   style={{ width: `${closedPct}%` }}
                   className="bg-slate-400 h-full transition-all"
-                  title={`Closed: ${closedPct}%`}
+                  title={`Yopilgan: ${closedPct}%`}
                 />
               </div>
 
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 text-xs pt-2">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shrink-0" />
-                  <span className="text-text-muted">Unanswered ({unansweredPct}%)</span>
+                  <span className="text-text-muted">Javob kutilmoqda ({unansweredPct}%)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-accent-primary shrink-0" />
-                  <span className="text-text-muted">In progress ({inProgressPct}%)</span>
+                  <span className="text-text-muted">Ko‘rib chiqilmoqda ({inProgressPct}%)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-                  <span className="text-text-muted">Answered ({answeredPct}%)</span>
+                  <span className="text-text-muted">Javob berilgan ({answeredPct}%)</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0" />
-                  <span className="text-text-muted">Closed ({closedPct}%)</span>
+                  <span className="text-text-muted">Yopilgan ({closedPct}%)</span>
                 </div>
               </div>
             </div>
@@ -167,30 +167,30 @@ export default function StatisticsPage() {
             <div className="p-6 rounded-xl bg-surface border border-border-default shadow-xs space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-text-primary">
-                  Turnaround & Activity
+                  Javob vaqti va faollik
                 </h2>
                 <TrendingUp className="w-4 h-4 text-accent-primary" />
               </div>
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between pb-2 border-b border-border-default/60">
-                  <span className="text-xs text-text-muted">Average Staff Turnaround</span>
+                  <span className="text-xs text-text-muted">O‘rtacha javob vaqti</span>
                   <span className="text-xs font-bold text-accent-primary-dark">
                     {stats?.averageResponseTimeMinutes == null
-                      ? 'Not enough data'
-                      : `${stats.averageResponseTimeMinutes} minutes`}
+                      ? 'Hali ma’lumot yo‘q'
+                      : `${stats.averageResponseTimeMinutes} daqiqa`}
                   </span>
                 </div>
                 <div className="flex items-center justify-between pb-2 border-b border-border-default/60">
-                  <span className="text-xs text-text-muted">Active Cases (Last 24h)</span>
+                  <span className="text-xs text-text-muted">So‘nggi 24 soatda</span>
                   <span className="text-xs font-bold text-text-primary">
                     {stats?.recentActivityCount || 0}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">In progress</span>
+                  <span className="text-xs text-text-muted">Ko‘rib chiqilmoqda</span>
                   <span className="text-xs font-bold text-accent-primary-dark">
-                    {stats?.inProgressCount ?? 0} cases
+                    {stats?.inProgressCount ?? 0} ta murojaat
                   </span>
                 </div>
               </div>

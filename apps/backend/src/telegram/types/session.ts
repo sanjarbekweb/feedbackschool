@@ -9,6 +9,7 @@ export enum StudentSessionState {
 
 export interface StudentSessionData {
   state: StudentSessionState;
+  recipientRoleId?: string;
   selectedCategory?: ConversationCategory;
   activeConversationId?: string;
   activeCaseId?: string;

@@ -3,15 +3,15 @@ import { InlineKeyboard } from 'grammy';
 export const StaffKeyboards = {
   mainMenu() {
     return new InlineKeyboard()
-      .text('⏳ Unanswered Cases', 'staff:filter:UNANSWERED')
+      .text('⏳ Javob kutilmoqda', 'staff:filter:UNANSWERED')
       .row()
-      .text('📥 All Cases', 'staff:filter:ALL')
+      .text('📥 Barcha murojaatlar', 'staff:filter:ALL')
       .row()
-      .text('✅ Answered Cases', 'staff:filter:ANSWERED')
+      .text('✅ Javob berilganlar', 'staff:filter:ANSWERED')
       .row()
-      .text('👥 Students', 'staff:students:1')
+      .text('👥 O‘quvchilar', 'staff:students:1')
       .row()
-      .text('📊 Statistics', 'staff:stats');
+      .text('📊 Statistika', 'staff:stats');
   },
 
   caseList(
@@ -23,12 +23,12 @@ export const StaffKeyboards = {
     const keyboard = new InlineKeyboard();
 
     for (const c of cases) {
-      keyboard.text(`Open ${c.caseId}`, `staff:case:${c.id}`).row();
+      keyboard.text(`Ochish ${c.caseId}`, `staff:case:${c.id}`).row();
     }
 
     // Pagination row
     if (page > 1) {
-      keyboard.text('◀️ Prev', `staff:page:${filter}:${page - 1}`);
+      keyboard.text('◀️ Oldingi', `staff:page:${filter}:${page - 1}`);
     } else {
       keyboard.text('◀️', 'staff:noop');
     }
@@ -36,25 +36,29 @@ export const StaffKeyboards = {
     keyboard.text(`${page}/${Math.max(totalPages, 1)}`, 'staff:noop');
 
     if (page < totalPages) {
-      keyboard.text('Next ▶️', `staff:page:${filter}:${page + 1}`);
+      keyboard.text('Keyingi ▶️', `staff:page:${filter}:${page + 1}`);
     } else {
       keyboard.text('▶️', 'staff:noop');
     }
 
     keyboard.row();
-    keyboard.text('🏠 Main Menu', 'staff:home');
+    keyboard.text('🏠 Bosh menyu', 'staff:home');
 
     return keyboard;
   },
 
-  caseDetail(conversationId: string, isClosed: boolean) {
+  caseDetail(conversationId: string, isClosed: boolean, page = 1, totalPages = 1) {
     const keyboard = new InlineKeyboard();
+    if (page > 1) keyboard.text('◀️ Oldingi', `staff:history:${conversationId}:${page - 1}`);
+    if (page < totalPages) keyboard.text('Keyingi ▶️', `staff:history:${conversationId}:${page + 1}`);
+    if (totalPages > 1) keyboard.row();
+
     if (!isClosed) {
-      keyboard.text('💬 Respond', `staff:action:respond:${conversationId}`).row();
-      keyboard.text('✅ Mark Answered', `staff:action:mark_answered:${conversationId}`).row();
-      keyboard.text('🔒 Close Case', `staff:action:close:${conversationId}`).row();
+      keyboard.text('💬 Javob yozish', `staff:action:respond:${conversationId}`).row();
+      keyboard.text('✅ Javob berilgan deb belgilash', `staff:action:mark_answered:${conversationId}`).row();
+      keyboard.text('🔒 Yopish', `staff:action:close:${conversationId}`).row();
     }
-    keyboard.text('⬅️ Back to List', 'staff:filter:UNANSWERED');
+    keyboard.text('⬅️ Ro‘yxatga qaytish', 'staff:filter:UNANSWERED');
     return keyboard;
   },
 
@@ -62,7 +66,7 @@ export const StaffKeyboards = {
     const keyboard = new InlineKeyboard();
 
     if (page > 1) {
-      keyboard.text('◀️ Prev', `staff:students:${page - 1}`);
+      keyboard.text('◀️ Oldingi', `staff:students:${page - 1}`);
     } else {
       keyboard.text('◀️', 'staff:noop');
     }
@@ -70,21 +74,21 @@ export const StaffKeyboards = {
     keyboard.text(`${page}/${Math.max(totalPages, 1)}`, 'staff:noop');
 
     if (page < totalPages) {
-      keyboard.text('Next ▶️', `staff:students:${page + 1}`);
+      keyboard.text('Keyingi ▶️', `staff:students:${page + 1}`);
     } else {
       keyboard.text('▶️', 'staff:noop');
     }
 
     keyboard.row();
-    keyboard.text('🏠 Main Menu', 'staff:home');
+    keyboard.text('🏠 Bosh menyu', 'staff:home');
 
     return keyboard;
   },
 
   statsView() {
     return new InlineKeyboard()
-      .text('🔄 Refresh', 'staff:stats')
+      .text('🔄 Yangilash', 'staff:stats')
       .row()
-      .text('🏠 Main Menu', 'staff:home');
+      .text('🏠 Bosh menyu', 'staff:home');
   },
 };

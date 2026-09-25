@@ -47,6 +47,8 @@ export interface User {
   telegramId?: string | null;
   email?: string | null;
   role: UserRole;
+  staffRoleId?: string | null;
+  displayName?: string | null;
   isActive: boolean;
   studentIdentifier?: string | null;
   createdAt: Date | string;
@@ -140,6 +142,8 @@ export interface CurrentUser {
   telegramId?: string | null;
   email?: string | null;
   role: UserRole;
+  staffRoleId?: string | null;
+  displayName?: string | null;
   studentIdentifier?: string | null;
 }
 
@@ -155,6 +159,7 @@ export interface AuthSession {
 export interface CreateConversationDto {
   category: ConversationCategory;
   initialMessage: string;
+  recipientRoleId?: string;
   studentTelegramId: string;
 }
 
@@ -245,6 +250,7 @@ export interface BaseSseEvent<T extends SseEventType, P> {
   type: T;
   timestamp: string;
   payload: P;
+  recipientRoleId?: string;
 }
 
 export type ConversationCreatedSseEvent = BaseSseEvent<
@@ -292,3 +298,18 @@ export type AppSseEvent =
   | StatsUpdatedSseEvent;
 
 export type RealtimeEvent = AppSseEvent;
+
+export interface StaffRoleItem {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+export interface StaffAccount {
+  id: string;
+  displayName: string | null;
+  email: string | null;
+  role: UserRole;
+  staffRoleId: string | null;
+  isActive: boolean;
+  staffRole: StaffRoleItem | null;
+}

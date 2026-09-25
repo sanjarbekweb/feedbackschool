@@ -46,10 +46,15 @@ model User {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
+  staffRoleId       String?
+  staffRole         StaffRole? @relation(fields: [staffRoleId], references: [id], onDelete: Restrict)
+  displayName       String?
+
   conversations     Conversation[]
   messages          Message[]
   auditLogs         AuditLog[]
 
+  @@index([staffRoleId, role, isActive])
   @@index([role])
   @@map("users")
 }
@@ -57,6 +62,8 @@ model User {
 model Conversation {
   id            String               @id @default(uuid())
   caseId        String               @unique // Non-sensitive ID e.g. "#A81F42"
+  recipientRoleId String @default("psychologist")
+  recipientRole StaffRole @relation(fields: [recipientRoleId], references: [id], onDelete: Restrict)
   studentId     String
   status        ConversationStatus   @default(UNANSWERED)
   category      ConversationCategory @default(GENERAL)
@@ -67,6 +74,8 @@ model Conversation {
   student       User                 @relation(fields: [studentId], references: [id], onDelete: Cascade)
   messages      Message[]
 
+  @@index([recipientRoleId, status, lastMessageAt(sort: Desc)])
+  @@index([studentId, lastMessageAt(sort: Desc)])
   @@index([status])
   @@index([studentId])
   @@index([lastMessageAt])
@@ -80,6 +89,7 @@ model Message {
   conversationId String
   senderId       String
   senderType     SenderType
+  sourceKey      String? @unique
   content        String       // Message body - text only
   createdAt      DateTime     @default(now())
   readAt         DateTime?
@@ -87,6 +97,7 @@ model Message {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
 
+  @@index([conversationId, createdAt, id])
   @@index([conversationId])
   @@index([senderId])
   @@index([createdAt])
@@ -108,4 +119,34 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([targetId])
   @@map("audit_logs")
+}
+
+model StaffRole {
+  id String @id @default(uuid())
+  name String @unique
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  users User[]
+  conversations Conversation[]
+  @@map("staff_roles")
+}
+
+model NotificationJob {
+  id String @id @default(uuid())
+  kind String
+  target String
+  caseId String
+  attempts Int @default(0)
+  availableAt DateTime @default(now())
+  createdAt DateTime @default(now())
+  @@index([availableAt, createdAt])
+  @@map("notification_jobs")
+}
+
+model BotSession {
+  id String @id
+  data Json
+  expiresAt DateTime
+  @@index([expiresAt])
+  @@map("bot_sessions")
 }

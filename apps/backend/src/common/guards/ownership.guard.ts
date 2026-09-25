@@ -1,3 +1,4 @@
+import { assertConversationAccess } from '../conversation-access';
 import {
   Injectable,
   CanActivate,
@@ -21,7 +22,7 @@ export class ConversationOwnershipGuard implements CanActivate {
     }
 
     // Staff and Admin have authority across all conversations
-    if (user.role === UserRole.STAFF || user.role === UserRole.ADMIN) {
+    if (user.role === UserRole.ADMIN) {
       return true;
     }
 
@@ -32,14 +33,15 @@ export class ConversationOwnershipGuard implements CanActivate {
     // Students may only access their own conversations
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      select: { studentId: true },
+      select: { studentId: true, recipientRoleId: true },
     });
 
-    if (!conversation || conversation.studentId !== user.id) {
+    if (!conversation) {
       // Throw 404 instead of 403 to prevent IDOR enumeration of cases
-      throw new NotFoundException('Conversation not found');
+      throw new NotFoundException('Murojaat topilmadi');
     }
 
+    assertConversationAccess(conversation, user);
     return true;
   }
 }

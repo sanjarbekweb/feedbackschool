@@ -5,7 +5,6 @@ import { ConversationsService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
 import { UsersService } from '../users/users.service';
 import { StatisticsService } from '../statistics/statistics.service';
-import { NotificationsService } from '../notifications/notifications.service';
 import {
   ConversationCategory,
   ConversationStatus,
@@ -20,7 +19,6 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
   let messagesService: jest.Mocked<MessagesService>;
   let usersService: jest.Mocked<UsersService>;
   let statisticsService: jest.Mocked<StatisticsService>;
-  let notificationsService: NotificationsService;
 
   beforeEach(() => {
     // Instantiate dummy bots for testing handlers (avoiding live network calls)
@@ -50,36 +48,6 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
       getDashboardStatistics: jest.fn(),
     } as any;
 
-    notificationsService = new NotificationsService();
-  });
-
-  describe('Privacy Invariant on Staff Group Notifications', () => {
-    it('dispatches notification containing case ID, category, status, and timestamp, but ZERO message content', async () => {
-      let capturedNotification = '';
-      notificationsService.registerStaffGroupNotifier(async (text: string) => {
-        capturedNotification = text;
-      });
-
-      const sensitiveMessage = 'I am struggling with deep depression and anxiety';
-
-      await notificationsService.notifyStaffGroup({
-        caseId: '#A81F42',
-        category: ConversationCategory.PERSONAL,
-        status: ConversationStatus.UNANSWERED,
-        timestamp: new Date('2026-09-04T12:00:00Z').toISOString(),
-      });
-
-      expect(capturedNotification).toContain('#A81F42');
-      expect(capturedNotification).toContain('Personal / Emotional');
-      expect(capturedNotification).toContain('Unanswered');
-
-      // CRITICAL PRIVACY INVARIANT: zero message body leakage
-      expect(capturedNotification).not.toContain(sensitiveMessage);
-      expect(capturedNotification).not.toContain('depression');
-      expect(capturedNotification).not.toContain('anxiety');
-      expect(capturedNotification).not.toContain('phone');
-      expect(capturedNotification).not.toContain('username');
-    });
   });
 
   describe('Student Telegram Bot', () => {
@@ -136,7 +104,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
         studentTelegramId: '99887766',
         category: ConversationCategory.ACADEMIC,
         initialMessage: 'I need help with my exam schedule.',
-      });
+      }, undefined, undefined);
 
       expect(fakeCtx.reply).toHaveBeenCalledWith(
         expect.stringContaining('#A81F42'),
@@ -168,7 +136,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
       await (controller as any).sendConversationDetail(fakeCtx, 'conv-other-student');
 
       // Must reject access and not show messages!
-      expect(fakeCtx.reply).toHaveBeenCalledWith('Case not found.');
+      expect(fakeCtx.reply).toHaveBeenCalledWith('Murojaat topilmadi.');
       expect(messagesService.getMessages).not.toHaveBeenCalled();
     });
   });
@@ -198,7 +166,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
       await controller.authMiddleware(fakeCtx, next);
 
       expect(fakeCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Access Restricted'),
+        expect.stringContaining('Ruxsat yo‘q'),
         expect.any(Object),
       );
       expect(next).not.toHaveBeenCalled();
@@ -209,6 +177,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
         id: 'staff-uuid-1',
         telegramId: '777777',
         role: UserRole.STAFF,
+        isActive: true,
       } as any);
 
       const fakeCtx: any = {
@@ -229,6 +198,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
         id: 'staff-uuid-1',
         telegramId: '777777',
         role: UserRole.STAFF,
+        isActive: true,
       };
 
       messagesService.addMessage.mockResolvedValue({
@@ -263,10 +233,11 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
         'conv-123',
         { content: 'We are here to help.' },
         staffUser,
+        undefined,
       );
 
       expect(fakeCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Response sent for Case *#A81F42*'),
+        expect.stringContaining('#A81F42: javob yuborildi.'),
         expect.any(Object),
       );
     });

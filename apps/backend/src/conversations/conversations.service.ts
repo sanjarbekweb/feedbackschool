@@ -1,3 +1,4 @@
+import { conversationScope, assertConversationAccess } from '../common/conversation-access';
 import {
   Injectable,
   NotFoundException,
@@ -38,7 +39,7 @@ export class ConversationsService {
    * Generates a collision-resistant non-sensitive Case ID e.g. "#A81F42"
    */
   private generateCaseId(): string {
-    const hex = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const hex = crypto.randomBytes(6).toString('hex').toUpperCase();
     return `#${hex}`;
   }
 
@@ -49,21 +50,33 @@ export class ConversationsService {
   async createConversation(
     dto: CreateConversationDto,
     creator?: CurrentUser,
+    sourceKey?: string,
   ) {
     let studentUser;
 
+    if (creator?.role === UserRole.STUDENT && dto.studentTelegramId && dto.studentTelegramId !== creator.telegramId) {
+      throw new BadRequestException("Boshqa o‘quvchi nomidan yozib bo‘lmaydi.");
+    }
     if (dto.studentTelegramId) {
       studentUser = await this.usersService.getOrCreateStudent(dto.studentTelegramId);
     } else if (creator && creator.role === UserRole.STUDENT) {
       studentUser = await this.usersService.findById(creator.id);
     } else {
-      throw new BadRequestException('A valid student Telegram ID or student user context is required.');
+      throw new BadRequestException('O‘quvchi hisobi kerak.');
     }
 
     if (!studentUser) {
-      throw new NotFoundException('Student user could not be found or created.');
+      throw new NotFoundException('O‘quvchi topilmadi.');
     }
 
+    if (!dto.initialMessage.trim() || dto.initialMessage.length > 4000) throw new BadRequestException('Xabar 1–4000 belgidan iborat bo‘lsin.');
+    if (sourceKey) {
+      const existing = await this.prisma.message.findUnique({ where: { sourceKey }, include: { conversation: true } });
+      if (existing && existing.senderId === studentUser.id) return existing.conversation;
+    }
+    const recipientRoleId = dto.recipientRoleId || 'psychologist';
+    const recipient = await this.prisma.staffRole.findFirst({ where: { id: recipientRoleId, isActive: true, users: { some: { role: UserRole.STAFF, isActive: true } } } });
+    if (!recipient) throw new BadRequestException('Qabul qiluvchi hozir mavjud emas.');
     const caseId = this.generateCaseId();
 
     // Atomic transaction: create case + initial message
@@ -71,6 +84,7 @@ export class ConversationsService {
       const conversation = await tx.conversation.create({
         data: {
           caseId,
+          recipientRoleId,
           studentId: studentUser.id,
           category: dto.category,
           status: ConversationStatus.UNANSWERED,
@@ -82,10 +96,12 @@ export class ConversationsService {
           conversationId: conversation.id,
           senderId: studentUser.id,
           senderType: SenderType.STUDENT,
-          content: dto.initialMessage,
+          content: dto.initialMessage.trim(),
+          sourceKey,
         },
       });
 
+      await this.notificationsService.enqueueStaff(tx, recipientRoleId, caseId);
       return { conversation, message };
     });
 
@@ -103,17 +119,10 @@ export class ConversationsService {
       },
     });
 
-    // Privacy-safe staff notification (case ID, category, status, timestamp only)
-    await this.notificationsService.notifyStaffGroup({
-      caseId,
-      category: dto.category,
-      status: ConversationStatus.UNANSWERED,
-      timestamp: createdAtIso,
-    });
-
     // Push realtime SSE event to staff dashboard
     this.realtimeService.emit({
       type: 'CONVERSATION_CREATED',
+      recipientRoleId,
       timestamp: createdAtIso,
       payload: {
         conversationId: result.conversation.id,
@@ -139,7 +148,7 @@ export class ConversationsService {
     const limit = filter.limit;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.ConversationWhereInput = {};
+    const where: Prisma.ConversationWhereInput = conversationScope(currentUser);
 
     // Ownership enforcement: students only see their own cases
     if (currentUser.role === UserRole.STUDENT) {
@@ -214,12 +223,13 @@ export class ConversationsService {
   /**
    * Retrieves single conversation by ID.
    */
-  async findOne(id: string): Promise<ConversationDetail & { studentId: string }> {
+  async findOne(id: string, actor?: CurrentUser): Promise<ConversationDetail & { studentId: string; recipientRoleId: string }> {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id },
       select: {
         id: true,
         studentId: true,
+        recipientRoleId: true,
         caseId: true,
         status: true,
         category: true,
@@ -238,9 +248,10 @@ export class ConversationsService {
     });
 
     if (!conversation) {
-      throw new NotFoundException('Conversation not found');
+      throw new NotFoundException('Murojaat topilmadi');
     }
 
+    if (actor) assertConversationAccess(conversation, actor);
     return conversation;
   }
 
@@ -248,7 +259,7 @@ export class ConversationsService {
    * Updates conversation status or category.
    */
   async update(id: string, dto: UpdateConversationDto, actor: CurrentUser) {
-    const existing = await this.findOne(id);
+    const existing = await this.findOne(id, actor);
 
     const updated = await this.prisma.conversation.update({
       where: { id },
@@ -273,6 +284,7 @@ export class ConversationsService {
 
     this.realtimeService.emit({
       type: 'CONVERSATION_UPDATED',
+      recipientRoleId: existing.recipientRoleId,
       timestamp: updated.updatedAt.toISOString(),
       payload: {
         conversationId: updated.id,

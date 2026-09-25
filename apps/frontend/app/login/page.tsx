@@ -9,8 +9,8 @@ import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Loader2 } from 'lucid
 import { apiClient, ApiError } from '@/lib/api';
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid school email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Elektron pochtani to‘g‘ri kiriting'),
+  password: z.string().min(6, 'Parol kamida 6 belgidan iborat bo‘lsin'),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -47,7 +47,7 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setServerError(err.message);
       } else {
-        setServerError('Unable to connect to the psychology portal. Please try again.');
+        setServerError('Ulanib bo‘lmadi. Qayta urinib ko‘ring.');
       }
     } finally {
       setIsLoading(false);
@@ -68,10 +68,10 @@ export default function LoginPage() {
             <ShieldCheck className="w-6 h-6 text-accent-primary" />
           </div>
           <h1 className="text-2xl font-semibold tracking-tight text-accent-primary-dark">
-            Psychology Staff Portal
+            Xodimlar paneli
           </h1>
           <p className="text-sm text-text-muted mt-1.5">
-            Secure, confidential triage & support management
+            Hisobingizga kiring
           </p>
         </div>
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 htmlFor="email"
                 className="block text-xs font-medium text-text-primary mb-1.5"
               >
-                Staff Email Address
+                Elektron pochta
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -127,7 +127,7 @@ export default function LoginPage() {
                 htmlFor="password"
                 className="block text-xs font-medium text-text-primary mb-1.5"
               >
-                Password
+                Parol
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-text-muted">
@@ -162,11 +162,11 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Authenticating...</span>
+                  <span>Tekshirilmoqda…</span>
                 </>
               ) : (
                 <>
-                  <span>Sign In</span>
+                  <span>Kirish</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -176,8 +176,8 @@ export default function LoginPage() {
           {/* Privacy Note */}
           <div className="mt-6 pt-5 border-t border-border-default/60 text-center">
             <p className="text-xs text-text-muted leading-relaxed">
-              Protected health and educational communication channel.
-              Access is monitored and audited.
+              Murojaatlar faqat ruxsat berilgan xodimlarga ko‘rinadi.
+              Kirishlar qayd etiladi.
             </p>
           </div>
         </div>

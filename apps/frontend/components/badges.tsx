@@ -7,7 +7,7 @@ export function StatusBadge({ status }: { status: ConversationStatus | string })
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200">
         <Clock className="w-3.5 h-3.5 text-amber-600" />
-        <span>Unanswered</span>
+        <span>Javob kutilmoqda</span>
       </span>
     );
   }
@@ -16,7 +16,7 @@ export function StatusBadge({ status }: { status: ConversationStatus | string })
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-        <span>Answered</span>
+        <span>Javob berilgan</span>
       </span>
     );
   }
@@ -25,7 +25,7 @@ export function StatusBadge({ status }: { status: ConversationStatus | string })
     return (
       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-300">
         <Lock className="w-3.5 h-3.5 text-slate-500" />
-        <span>Closed</span>
+        <span>Yopilgan</span>
       </span>
     );
   }
@@ -33,17 +33,17 @@ export function StatusBadge({ status }: { status: ConversationStatus | string })
   return (
     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
       <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
-      <span>{status}</span>
+      <span>{status === ConversationStatus.IN_PROGRESS ? 'Ko‘rib chiqilmoqda' : 'Noma’lum'}</span>
     </span>
   );
 }
 
 const CATEGORY_NAMES: Record<string, string> = {
-  GENERAL: 'General Inquiry',
-  ACADEMIC: 'Academic Stress',
-  PERSONAL: 'Personal / Emotional',
-  SOCIAL: 'Social / Relationships',
-  URGENT: 'Urgent Support',
+  GENERAL: 'Umumiy savol',
+  ACADEMIC: 'O‘qish',
+  PERSONAL: 'Shaxsiy masala',
+  SOCIAL: 'Munosabatlar',
+  URGENT: 'Shoshilinch yordam',
 };
 
 export function CategoryBadge({ category }: { category: ConversationCategory | string }) {

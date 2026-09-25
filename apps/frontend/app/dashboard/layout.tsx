@@ -68,12 +68,12 @@ export default function DashboardLayout({
         <div className="max-w-sm rounded-xl border border-border-default bg-surface p-6 text-center shadow-sm">
           <AlertCircle className="mx-auto h-6 w-6 text-state-error" />
           <h1 className="mt-3 text-sm font-semibold text-text-primary">
-            {unauthorized ? 'Session expired' : 'Portal unavailable'}
+            {unauthorized ? 'Seans tugadi' : 'Panelga ulanib bo‘lmadi'}
           </h1>
           <p className="mt-1 text-xs leading-relaxed text-text-muted">
             {unauthorized
-              ? 'Redirecting to secure sign in…'
-              : 'The secure API could not be reached. Check the connection and try again.'}
+              ? 'Kirish sahifasiga o‘tilmoqda…'
+              : 'Internetni tekshirib, qayta urinib ko‘ring.'}
           </p>
           {!unauthorized && (
             <button
@@ -81,7 +81,7 @@ export default function DashboardLayout({
               onClick={() => refetch()}
               className="mt-4 rounded-lg bg-accent-primary px-4 py-2 text-xs font-semibold text-white hover:bg-accent-primary-dark"
             >
-              Try again
+              Qayta urinish
             </button>
           )}
         </div>
@@ -103,7 +103,7 @@ export default function DashboardLayout({
             {/* Backdrop */}
             <motion.button
               type="button"
-              aria-label="Close navigation menu"
+              aria-label="Menyuni yopish"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

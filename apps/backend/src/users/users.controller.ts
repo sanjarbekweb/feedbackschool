@@ -1,3 +1,7 @@
+import { Body, Post, Patch, Param } from '@nestjs/common';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser as Actor } from '@psychology/types';
+import { StaffRoleDto, CreateStaffDto, ActiveDto } from './staff.dto';
 import {
   Controller,
   Get,
@@ -20,10 +24,12 @@ export class UsersController {
   @Roles(UserRole.STAFF, UserRole.ADMIN)
   async listStudents(
     @Query() pagination: PaginationDto,
+    @CurrentUser() actor: Actor,
   ): Promise<PaginatedApiResponse<StudentDirectoryItem>> {
     const result = await this.usersService.listStudents(
       pagination.page,
       pagination.limit,
+      actor,
     );
 
     return {
@@ -32,4 +38,32 @@ export class UsersController {
       meta: result.meta,
     };
   }
+  @Get('roles')
+  @Roles(UserRole.ADMIN)
+  async roles() { return { success: true, data: await this.usersService.listRoles() }; }
+
+  @Post('roles')
+  @Roles(UserRole.ADMIN)
+  async createRole(@Body() dto: StaffRoleDto, @CurrentUser() actor: Actor) {
+    return { success: true, data: await this.usersService.createRole(dto.name, actor) };
+  }
+
+  @Get('staff')
+  @Roles(UserRole.ADMIN)
+  async staff(@Query() query: PaginationDto) {
+    return { success: true, ...await this.usersService.listStaff(query.page, query.limit) };
+  }
+
+  @Post('staff')
+  @Roles(UserRole.ADMIN)
+  async createStaff(@Body() dto: CreateStaffDto, @CurrentUser() actor: Actor) {
+    return { success: true, data: await this.usersService.createStaff(dto, actor) };
+  }
+
+  @Patch('staff/:id')
+  @Roles(UserRole.ADMIN)
+  async activate(@Param('id') id: string, @Body() dto: ActiveDto, @CurrentUser() actor: Actor) {
+    return { success: true, data: await this.usersService.setStaffActive(id, dto.isActive, actor) };
+  }
+
 }

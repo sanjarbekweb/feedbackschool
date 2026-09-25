@@ -3,8 +3,8 @@ import './globals.css';
 import { QueryProvider } from '@/lib/query-provider';
 
 export const metadata: Metadata = {
-  title: 'School Psychology Support System',
-  description: 'Private student communication & staff triage dashboard',
+  title: 'Maktab murojaatlari',
+  description: 'Murojaatlar va javoblar',
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="uz">
       <body className="antialiased bg-base text-text-primary min-h-screen">
         <QueryProvider>{children}</QueryProvider>
       </body>

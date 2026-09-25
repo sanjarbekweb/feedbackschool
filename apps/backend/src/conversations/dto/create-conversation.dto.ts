@@ -13,5 +13,10 @@ export class CreateConversationDto {
 
   @IsString()
   @IsOptional()
+  @MaxLength(64)
+  recipientRoleId?: string;
+
+  @IsString()
+  @IsOptional()
   studentTelegramId?: string;
 }

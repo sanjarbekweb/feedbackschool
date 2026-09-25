@@ -1,97 +1,72 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConversationCategory, ConversationStatus } from '@psychology/types';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Prisma, NotificationJob } from '@prisma/client';
+import { PrismaService } from '../database/prisma.service';
 
-export interface StaffNotificationPayload {
-  caseId: string;
-  category: ConversationCategory;
-  status: ConversationStatus;
-  timestamp: string;
-  reason?: 'NEW_CONVERSATION' | 'STUDENT_FOLLOW_UP';
-}
-
-export type StaffGroupNotifier = (formattedText: string) => Promise<void>;
-export type StudentNotifier = (studentTelegramId: string, caseId: string, messageText: string) => Promise<void>;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  GENERAL: 'General Inquiry',
-  ACADEMIC: 'Academic Stress',
-  PERSONAL: 'Personal / Emotional',
-  SOCIAL: 'Social / Relationships',
-  URGENT: 'Urgent Support',
-};
+export type StaffGroupNotifier = (text: string, telegramId?: string) => Promise<void>;
+export type StudentNotifier = (telegramId: string, caseId: string, text: string) => Promise<void>;
 
 @Injectable()
-export class NotificationsService {
+export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(NotificationsService.name);
   private staffGroupNotifier?: StaffGroupNotifier;
   private studentNotifier?: StudentNotifier;
+  private timer?: ReturnType<typeof setInterval>;
+  private running?: Promise<void>;
 
-  registerStaffGroupNotifier(notifier: StaffGroupNotifier) {
-    this.staffGroupNotifier = notifier;
+  constructor(private readonly prisma: PrismaService) {}
+  registerStaffGroupNotifier(notifier: StaffGroupNotifier) { this.staffGroupNotifier = notifier; }
+  registerStudentNotifier(notifier: StudentNotifier) { this.studentNotifier = notifier; }
+
+  async enqueueStaff(tx: Prisma.TransactionClient, roleId: string, caseId: string) {
+    const staff = await tx.user.findMany({ where: { staffRoleId: roleId, role: 'STAFF', isActive: true, telegramId: { not: null } }, select: { id: true } });
+    if (staff.length) await tx.notificationJob.createMany({ data: staff.map(user => ({ kind: 'STAFF', target: user.id, caseId })) });
   }
-
-  registerStudentNotifier(notifier: StudentNotifier) {
-    this.studentNotifier = notifier;
+  async enqueueStudent(tx: Prisma.TransactionClient, telegramId: string, caseId: string) {
+    await tx.notificationJob.create({ data: { kind: 'STUDENT', target: telegramId, caseId } });
   }
-
-  /**
-   * Dispatches a privacy-safe notification to authorized psychology staff group.
-   * INVARIANT: Never contains message content or personal identifiers!
-   * Only case ID, category, status, and timestamp.
-   */
-  async notifyStaffGroup(payload: StaffNotificationPayload): Promise<void> {
-    const { caseId, category, status, timestamp, reason = 'NEW_CONVERSATION' } = payload;
-
-    this.logger.log(
-      `[Staff Notification] Case=${caseId} Category=${category} Status=${status} Time=${timestamp}`,
-    );
-
-    const categoryLabel = CATEGORY_LABELS[category] || category;
-    const timeFormatted = new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-    const title =
-      reason === 'STUDENT_FOLLOW_UP'
-        ? 'Student follow-up received'
-        : 'New psychology support request';
-
-    const formattedText =
-      `🔔 *${title}*\n\n` +
-      `Case: *${caseId}*\n` +
-      `Category: ${categoryLabel}\n` +
-      `Status: ${status === ConversationStatus.UNANSWERED ? '⏳ Unanswered' : status}\n` +
-      `Received: ${timeFormatted}\n\n` +
-      `Open in staff bot or dashboard to review and reply.`;
-
-    if (this.staffGroupNotifier) {
-      try {
-        await this.staffGroupNotifier(formattedText);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Failed to send staff group notification: ${message}`);
+  onModuleInit() {
+    this.timer = setInterval(() => {
+      if (!this.running) this.running = this.drain().catch(() => {
+        this.logger.error('Bildirishnoma navbatini qayta ishlashda xato.');
+      }).finally(() => { this.running = undefined; });
+    }, 1000);
+    this.timer.unref();
+  }
+  async onModuleDestroy() {
+    if (this.timer) clearInterval(this.timer);
+    await this.running;
+  }
+  async drain() {
+    if (!this.staffGroupNotifier || !this.studentNotifier) return;
+    // Lease jobs without holding a transaction open during network calls.
+    const jobs = await this.prisma.$queryRaw<NotificationJob[]>`
+      UPDATE "notification_jobs" SET "availableAt" = NOW() + INTERVAL '5 minutes'
+      WHERE id IN (
+        SELECT id FROM "notification_jobs" WHERE "availableAt" <= NOW() AND attempts < 12
+        ORDER BY "availableAt", "createdAt" LIMIT 10 FOR UPDATE SKIP LOCKED
+      ) RETURNING *
+    `;
+    await Promise.all(jobs.map(job => this.deliver(job)));
+  }
+  private async deliver(job: NotificationJob) {
+    try {
+      if (job.kind === 'STAFF') {
+        const user = await this.prisma.user.findUnique({ where: { id: job.target } });
+        const conversation = await this.prisma.conversation.findUnique({ where: { caseId: job.caseId }, select: { recipientRoleId: true } });
+        if (user?.isActive && user.role === 'STAFF' && user.telegramId && user.staffRoleId === conversation?.recipientRoleId) {
+          await this.staffGroupNotifier!(`🔔 Yangi xabar: ${job.caseId}\nMurojaatni bot yoki panelda oching.`, user.telegramId);
+        }
+      } else {
+        await this.studentNotifier!(job.target, job.caseId, `📩 ${job.caseId}: javob keldi.`);
       }
-    }
-  }
-
-  /**
-   * Dispatches a notification to the student when a staff response is submitted.
-   */
-  async notifyStudentResponse(studentTelegramId: string, caseId: string): Promise<void> {
-    this.logger.log(`[Student Notification] Case=${caseId} Response available`);
-
-    const messageText =
-      `📩 *You have received a response from the psychology staff regarding Case ${caseId}.*\n\n` +
-      `Click below to view the response:`;
-
-    if (this.studentNotifier) {
-      try {
-        await this.studentNotifier(studentTelegramId, caseId, messageText);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Failed to send student notification: ${message}`);
-      }
+      await this.prisma.notificationJob.delete({ where: { id: job.id } });
+    } catch (error: unknown) {
+      const retry = (error as { parameters?: { retry_after?: number } }).parameters?.retry_after;
+      const seconds = Math.max(retry || 0, Math.min(3600, 2 ** (job.attempts + 1)));
+      await this.prisma.notificationJob.update({ where: { id: job.id }, data: {
+        attempts: { increment: 1 }, availableAt: new Date(Date.now() + seconds * 1000),
+      } });
+      this.logger.warn(job.attempts >= 11 ? 'Bildirishnoma yuborilmadi; navbatni tekshiring.' : 'Bildirishnoma qayta yuboriladi.');
     }
   }
 }

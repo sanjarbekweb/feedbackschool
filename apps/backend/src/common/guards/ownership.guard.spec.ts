@@ -26,9 +26,9 @@ describe('ConversationOwnershipGuard', () => {
     } as unknown as ExecutionContext;
   }
 
-  it('should allow STAFF to access any conversation', async () => {
+  it('should allow ADMIN to access any conversation', async () => {
     const context = createMockContext(
-      { id: 'staff-1', role: UserRole.STAFF },
+      { id: 'admin-1', role: UserRole.ADMIN },
       { id: 'any-conv-id' },
     );
 
@@ -51,7 +51,7 @@ describe('ConversationOwnershipGuard', () => {
     expect(result).toBe(true);
     expect(prisma.conversation.findUnique).toHaveBeenCalledWith({
       where: { id: 'conv-123' },
-      select: { studentId: true },
+      select: { studentId: true, recipientRoleId: true },
     });
   });
 
@@ -67,4 +67,13 @@ describe('ConversationOwnershipGuard', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(NotFoundException);
   });
+  it('rejects staff assigned to a different role', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({ studentId: 'student-1', recipientRoleId: 'psychologist' });
+    await expect(guard.canActivate(createMockContext({ id: 'staff-1', role: UserRole.STAFF, staffRoleId: 'principal' }, { id: 'conv' }))).rejects.toThrow(NotFoundException);
+  });
+  it('allows staff assigned to the recipient role', async () => {
+    prisma.conversation.findUnique.mockResolvedValue({ studentId: 'student-1', recipientRoleId: 'psychologist' });
+    await expect(guard.canActivate(createMockContext({ id: 'staff-1', role: UserRole.STAFF, staffRoleId: 'psychologist' }, { id: 'conv' }))).resolves.toBe(true);
+  });
+
 });

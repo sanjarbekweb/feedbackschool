@@ -41,9 +41,6 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const studentToken = this.configService.get<string>('STUDENT_BOT_TOKEN');
     const staffToken = this.configService.get<string>('STAFF_BOT_TOKEN');
-    const staffGroupId =
-      this.configService.get<string>('STAFF_GROUP_ID') ||
-      this.configService.get<string>('STAFF_TELEGRAM_GROUP_ID');
     const mode = this.configService.get<string>('TELEGRAM_MODE') || 'polling';
     const webhookUrl = this.configService.get<string>('TELEGRAM_WEBHOOK_URL');
     const webhookSecret = this.configService.get<string>('TELEGRAM_WEBHOOK_SECRET');
@@ -72,32 +69,22 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // Wire notifications to staff group via Staff Bot
-    this.notificationsService.registerStaffGroupNotifier(async (formattedText: string) => {
-      if (this.staffBot && staffGroupId) {
-        await this.staffBot.api.sendMessage(staffGroupId, formattedText, {
-          parse_mode: 'Markdown',
-        });
-      } else {
-        this.logger.debug(
-          `[Telegram Notification Mock] Staff Group (${staffGroupId ? 'configured' : 'not configured'}):\n${formattedText}`,
-        );
-      }
+    this.notificationsService.registerStaffGroupNotifier(async (text, telegramId) => {
+      if (!this.staffBot || !telegramId) throw new Error('Xodim boti mavjud emas.');
+      await this.staffBot.api.sendMessage(telegramId, text);
     });
 
     // Wire notifications to student via Student Bot
     this.notificationsService.registerStudentNotifier(
-      async (studentTelegramId: string, caseId: string, messageText: string) => {
+      async (studentTelegramId: string, _caseId: string, messageText: string) => {
         if (this.studentBot) {
-          const keyboard = new InlineKeyboard().text('📨 View Response in My Messages', 'student:list');
+          const keyboard = new InlineKeyboard().text('📨 Javobni ko‘rish', 'student:list');
           await this.studentBot.api.sendMessage(studentTelegramId, messageText, {
             parse_mode: 'Markdown',
             reply_markup: keyboard,
           });
         } else {
-          this.logger.debug(
-            `[Telegram Notification Mock] Student notification for Case ${caseId}`,
-          );
+          throw new Error('O‘quvchi boti mavjud emas.');
         }
       },
     );
@@ -126,26 +113,26 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
               secret_token: webhookSecret,
               allowed_updates: ['message', 'callback_query'],
             });
-            this.logger.log(`Student Bot webhook registered at: ${formattedWebhook}`);
+            this.logger.log(`O‘quvchi Bot webhook registered at: ${formattedWebhook}`);
           } else {
             this.logger.warn('TELEGRAM_MODE is webhook but TELEGRAM_WEBHOOK_URL is not set.');
           }
         } else {
           this.studentBot
             .start({
-              onStart: (info) => this.logger.log(`Student Bot started via polling as @${info.username}`),
+              onStart: (info) => this.logger.log(`O‘quvchi Bot started via polling as @${info.username}`),
             })
             .catch((err) => {
-              this.logger.error(`Failed to start Student Bot polling: ${err.message}`);
+              this.logger.error(`Failed to start O‘quvchi Bot polling: ${err.message}`);
             });
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Error initializing Student Bot: ${message}`);
+        this.logger.error(`Error initializing O‘quvchi Bot: ${message}`);
       }
     } else {
       this.logger.warn(
-        'STUDENT_BOT_TOKEN is not configured. Student Telegram Bot is dormant.',
+        'STUDENT_BOT_TOKEN is not configured. O‘quvchi Telegram Bot is dormant.',
       );
     }
 
@@ -174,26 +161,26 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
               secret_token: webhookSecret,
               allowed_updates: ['message', 'callback_query'],
             });
-            this.logger.log(`Staff Bot webhook registered at: ${formattedWebhook}`);
+            this.logger.log(`Xodim Bot webhook registered at: ${formattedWebhook}`);
           } else {
             this.logger.warn('TELEGRAM_MODE is webhook but TELEGRAM_WEBHOOK_URL is not set.');
           }
         } else {
           this.staffBot
             .start({
-              onStart: (info) => this.logger.log(`Staff Bot started via polling as @${info.username}`),
+              onStart: (info) => this.logger.log(`Xodim Bot started via polling as @${info.username}`),
             })
             .catch((err) => {
-              this.logger.error(`Failed to start Staff Bot polling: ${err.message}`);
+              this.logger.error(`Failed to start Xodim Bot polling: ${err.message}`);
             });
         }
       } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
-        this.logger.error(`Error initializing Staff Bot: ${message}`);
+        this.logger.error(`Error initializing Xodim Bot: ${message}`);
       }
     } else {
       this.logger.warn(
-        'STAFF_BOT_TOKEN is not configured. Staff Telegram Bot is dormant.',
+        'STAFF_BOT_TOKEN is not configured. Xodim Telegram Bot is dormant.',
       );
     }
   }
@@ -216,11 +203,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (!this.isWebhookMode) {
       if (this.studentBot) {
         await this.studentBot.stop();
-        this.logger.log('Student Bot stopped.');
+        this.logger.log('O‘quvchi Bot stopped.');
       }
       if (this.staffBot) {
         await this.staffBot.stop();
-        this.logger.log('Staff Bot stopped.');
+        this.logger.log('Xodim Bot stopped.');
       }
     } else {
       this.logger.log('Telegram webhook mode shutting down gracefully.');

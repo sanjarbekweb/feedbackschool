@@ -30,7 +30,7 @@ export class AuthService {
       !user.isActive ||
       (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)
     ) {
-      throw new UnauthorizedException('Invalid email or password.');
+      throw new UnauthorizedException('Pochta yoki parol noto‘g‘ri.');
     }
 
     const payload = {

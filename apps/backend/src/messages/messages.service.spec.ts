@@ -9,6 +9,8 @@ import { MessagesService } from './messages.service';
 describe('MessagesService', () => {
   const conversation = {
     id: 'conversation-1',
+    studentId: 'student-1',
+    recipientRoleId: 'psychologist',
     caseId: '#A81F42',
     category: ConversationCategory.GENERAL,
     status: ConversationStatus.ANSWERED,
@@ -29,6 +31,7 @@ describe('MessagesService', () => {
     const transactionClient = {
       message: { create: jest.fn().mockResolvedValue(message) },
       conversation: {
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         update: jest.fn().mockResolvedValue({
           status: ConversationStatus.UNANSWERED,
           category: conversation.category,
@@ -45,8 +48,8 @@ describe('MessagesService', () => {
     };
     const auditService = { record: jest.fn().mockResolvedValue(undefined) };
     const notificationsService = {
-      notifyStaffGroup: jest.fn().mockResolvedValue(undefined),
-      notifyStudentResponse: jest.fn().mockResolvedValue(undefined),
+      enqueueStaff: jest.fn().mockResolvedValue(undefined),
+      enqueueStudent: jest.fn().mockResolvedValue(undefined),
     };
     const realtimeService = { emit: jest.fn() };
 
@@ -79,14 +82,8 @@ describe('MessagesService', () => {
         data: expect.objectContaining({ status: ConversationStatus.UNANSWERED }),
       }),
     );
-    expect(fixture.notificationsService.notifyStaffGroup).toHaveBeenCalledWith({
-      caseId: conversation.caseId,
-      category: conversation.category,
-      status: ConversationStatus.UNANSWERED,
-      timestamp: message.createdAt.toISOString(),
-      reason: 'STUDENT_FOLLOW_UP',
-    });
-    expect(fixture.notificationsService.notifyStudentResponse).not.toHaveBeenCalled();
+    expect(fixture.notificationsService.enqueueStaff).toHaveBeenCalledWith(fixture.transactionClient, 'psychologist', conversation.caseId);
+    expect(fixture.notificationsService.enqueueStudent).not.toHaveBeenCalled();
     expect(fixture.realtimeService.emit).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'MESSAGE_CREATED' }),
     );
@@ -111,7 +108,7 @@ describe('MessagesService', () => {
     await fixture.service.addMessage(
       conversation.id,
       { content: 'Staff response' },
-      { id: 'staff-1', role: UserRole.STAFF },
+      { id: 'staff-1', role: UserRole.STAFF, staffRoleId: 'psychologist' },
     );
 
     expect(fixture.transactionClient.conversation.update).toHaveBeenCalledWith(
@@ -119,10 +116,23 @@ describe('MessagesService', () => {
         data: expect.objectContaining({ status: ConversationStatus.ANSWERED }),
       }),
     );
-    expect(fixture.notificationsService.notifyStudentResponse).toHaveBeenCalledWith(
+    expect(fixture.notificationsService.enqueueStudent).toHaveBeenCalledWith(
+      fixture.transactionClient,
       conversation.student.telegramId,
       conversation.caseId,
     );
-    expect(fixture.notificationsService.notifyStaffGroup).not.toHaveBeenCalled();
+    expect(fixture.notificationsService.enqueueStaff).not.toHaveBeenCalled();
   });
+  it('rejects another student before any mutation or notification', async () => {
+    const fixture = createFixture();
+    await expect(fixture.service.addMessage(conversation.id, { content: 'test' }, { id: 'another', role: UserRole.STUDENT })).rejects.toThrow();
+    expect(fixture.transactionClient.message.create).not.toHaveBeenCalled();
+    expect(fixture.notificationsService.enqueueStaff).not.toHaveBeenCalled();
+  });
+  it('rejects staff from a different recipient role', async () => {
+    const fixture = createFixture();
+    await expect(fixture.service.addMessage(conversation.id, { content: 'test' }, { id: 'principal', role: UserRole.STAFF, staffRoleId: 'principal' })).rejects.toThrow();
+    expect(fixture.transactionClient.message.create).not.toHaveBeenCalled();
+  });
+
 });

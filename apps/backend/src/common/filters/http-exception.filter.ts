@@ -15,7 +15,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message = 'Internal server error';
+    let message = 'Xatolik yuz berdi. Qayta urinib ko‘ring.';
     let code = 'INTERNAL_ERROR';
     let details: unknown = undefined;
 
@@ -37,8 +37,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
       success: false,
       error: {
         code,
-        message: Array.isArray(details) ? details.join(', ') : message,
-        details: Array.isArray(details) ? details : undefined,
+        message: Array.isArray(details) ? 'Kiritilgan ma’lumotlarni tekshiring.' :
+          status === 401 ? 'Seans tugadi yoki kirish ma’lumotlari noto‘g‘ri.' :
+          status === 403 ? 'Bu amal uchun ruxsat yo‘q.' :
+          status === 429 ? 'So‘rovlar ko‘paydi. Biroz kutib, qayta urinib ko‘ring.' : message,
       },
     };
 

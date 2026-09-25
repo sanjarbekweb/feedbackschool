@@ -29,6 +29,7 @@ export function useRealtimeEvents(enabled = true) {
     let reconnectTimeout: ReturnType<typeof setTimeout> | undefined;
     let reconnectAttempt = 0;
     let disposed = false;
+    let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
     const connect = () => {
       setStatus('connecting');
@@ -39,38 +40,17 @@ export function useRealtimeEvents(enabled = true) {
       eventSource.onopen = () => {
         reconnectAttempt = 0;
         setStatus('connected');
+        void queryClient.invalidateQueries();
       };
 
-      const handleEvent = (event: MessageEvent<string>) => {
-        try {
-          const data: RealtimeEvent = JSON.parse(event.data);
-          
-          if (
-            data.type === 'CONVERSATION_CREATED' ||
-            data.type === 'CONVERSATION_UPDATED'
-          ) {
-            queryClient.invalidateQueries({ queryKey: ['conversations'] });
-            queryClient.invalidateQueries({ queryKey: ['statistics'] });
-            if (data.payload?.conversationId) {
-              queryClient.invalidateQueries({
-                queryKey: ['conversation', data.payload.conversationId],
-              });
-            }
-          } else if (data.type === 'MESSAGE_CREATED') {
-            queryClient.invalidateQueries({ queryKey: ['conversations'] });
-            queryClient.invalidateQueries({ queryKey: ['statistics'] });
-            if (data.payload?.conversationId) {
-              queryClient.invalidateQueries({
-                queryKey: ['conversation', data.payload.conversationId],
-              });
-              queryClient.invalidateQueries({
-                queryKey: ['messages', data.payload.conversationId],
-              });
-            }
+      const handleEvent = () => {
+        if (refreshTimer) return;
+        refreshTimer = setTimeout(() => {
+          refreshTimer = undefined;
+          for (const key of ['conversations', 'statistics', 'conversation', 'messages', 'students']) {
+            void queryClient.invalidateQueries({ queryKey: [key] });
           }
-        } catch {
-          // Ignore parse errors on heartbeat or comment events
-        }
+        }, 300);
       };
 
       EVENT_TYPES.forEach((eventType) => {
@@ -98,6 +78,7 @@ export function useRealtimeEvents(enabled = true) {
 
     return () => {
       disposed = true;
+      if (refreshTimer) clearTimeout(refreshTimer);
       if (eventSource) {
         eventSource.close();
       }

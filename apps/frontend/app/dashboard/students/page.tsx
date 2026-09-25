@@ -36,10 +36,10 @@ export default function StudentsPage() {
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-accent-primary-dark">
-          Student Directory
+          O‘quvchilar
         </h1>
         <p className="text-xs text-text-muted mt-1">
-          Confidential student profiles and case engagement history
+          Sizga murojaat qilgan o‘quvchilar
         </p>
       </div>
 
@@ -48,9 +48,9 @@ export default function StudentsPage() {
         <ShieldCheck className="w-5 h-5 text-accent-primary mt-0.5 shrink-0" />
         <div className="text-xs text-text-primary leading-relaxed">
           <span className="font-semibold text-accent-primary-dark block mb-0.5">
-            Student Privacy & Anonymization Invariant
+            Shaxsiy ma’lumotlar himoyasi
           </span>
-          To protect student emotional safety and maintain confidentiality, individual Telegram handles and phone numbers are excluded from this directory. Students are referenced by their persistent anonymized identification codes.
+          O‘quvchilar kod bilan ko‘rsatiladi. Telefon raqamlari va Telegram nomlari ko‘rinmaydi.
         </div>
       </div>
 
@@ -60,7 +60,7 @@ export default function StudentsPage() {
           <div className="flex items-center gap-2">
             <Users className="w-4 h-4 text-accent-primary" />
             <span className="text-xs font-semibold text-text-primary">
-              Enrolled Students ({data?.meta?.total ?? 0})
+              O‘quvchilar ({data?.meta?.total ?? 0})
             </span>
           </div>
         </div>
@@ -68,12 +68,12 @@ export default function StudentsPage() {
         {isLoading ? (
           <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-text-muted">
             <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
-            <span>Loading student directory...</span>
+            <span>O‘quvchilar yuklanmoqda…</span>
           </div>
         ) : data?.data?.length === 0 ? (
           <div className="p-16 text-center space-y-2 text-xs text-text-muted">
-            <p className="font-medium text-text-primary">No students registered yet</p>
-            <p>Students appear automatically once they start a conversation with the student bot.</p>
+            <p className="font-medium text-text-primary">Hali o‘quvchi yo‘q</p>
+            <p>O‘quvchi sizga murojaat yuborgach, shu yerda ko‘rinadi.</p>
           </div>
         ) : (
           <div className="divide-y divide-border-default/60">
@@ -88,13 +88,13 @@ export default function StudentsPage() {
                   </div>
                   <div>
                     <span className="text-xs font-semibold text-text-primary block">
-                      Student #{student.studentIdentifier || 'S-????'}
+                      O‘quvchi #{student.studentIdentifier || 'S-????'}
                     </span>
                     <span className="text-[11px] text-text-muted flex items-center gap-1.5 mt-0.5">
                       <Calendar className="w-3 h-3" />
                       <span>
-                        Registered{' '}
-                        {new Date(student.createdAt).toLocaleDateString([], {
+                        Qo‘shilgan{' '}
+                        {new Date(student.createdAt).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent',
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',
@@ -107,7 +107,7 @@ export default function StudentsPage() {
                 <div className="flex items-center gap-4">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
                     <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{student._count?.conversations || 0} Case(s)</span>
+                    <span>{student._count?.conversations || 0} ta murojaat</span>
                   </span>
                 </div>
               </div>
@@ -119,7 +119,7 @@ export default function StudentsPage() {
         {data && data.meta.totalPages > 1 && (
           <div className="p-4 border-t border-border-default flex items-center justify-between text-xs text-text-muted">
             <span>
-              Page {data.meta.page} of {data.meta.totalPages} ({data.meta.total} students)
+              Sahifa {data.meta.page} / {data.meta.totalPages} ({data.meta.total} ta o‘quvchi)
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -128,14 +128,14 @@ export default function StudentsPage() {
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
-                <span>Previous</span>
+                <span>Oldingi</span>
               </button>
               <button
                 disabled={!data.meta.hasNextPage}
                 onClick={() => setPage(page + 1)}
                 className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <span>Next</span>
+                <span>Keyingi</span>
                 <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

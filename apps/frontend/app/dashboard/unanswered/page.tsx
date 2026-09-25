@@ -8,8 +8,8 @@ export default function UnansweredPage() {
   return (
     <ConversationList
       initialStatus={ConversationStatus.UNANSWERED}
-      title="Unanswered Cases"
-      description="Student messages currently awaiting review and response by psychology staff"
+      title="Javob kutilmoqda"
+      description="Javobingizni kutayotgan murojaatlar"
     />
   );
 }

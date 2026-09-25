@@ -27,13 +27,13 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Inbox / All', href: '/dashboard/inbox', icon: Inbox },
-  { label: 'Unanswered', href: '/dashboard/unanswered', icon: Clock },
-  { label: 'Answered', href: '/dashboard/answered', icon: CheckCircle2 },
-  { label: 'Students', href: '/dashboard/students', icon: Users },
-  { label: 'Statistics', href: '/dashboard/statistics', icon: BarChart3 },
-  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+  { label: 'Umumiy ko‘rinish', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Barcha murojaatlar', href: '/dashboard/inbox', icon: Inbox },
+  { label: 'Javob kutilmoqda', href: '/dashboard/unanswered', icon: Clock },
+  { label: 'Javob berilgan', href: '/dashboard/answered', icon: CheckCircle2 },
+  { label: 'O‘quvchilar', href: '/dashboard/students', icon: Users },
+  { label: 'Statistika', href: '/dashboard/statistics', icon: BarChart3 },
+  { label: 'Sozlamalar', href: '/dashboard/settings', icon: Settings },
 ];
 
 export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
@@ -62,10 +62,10 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
           </div>
           <div>
             <span className="font-semibold text-sm text-accent-primary-dark tracking-tight block">
-              Psychology Portal
+              Maktab murojaatlari
             </span>
             <span className="text-[11px] text-text-muted block leading-none">
-              Student Support Triage
+              Murojaatlar va javoblar
             </span>
           </div>
           {onCloseMobile && (
@@ -73,7 +73,7 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
               type="button"
               onClick={onCloseMobile}
               className="ml-auto rounded-lg p-2 text-text-muted hover:bg-base hover:text-text-primary"
-              aria-label="Close navigation menu"
+              aria-label="Menyuni yopish"
             >
               <X className="h-4 w-4" />
             </button>
@@ -135,10 +135,10 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
             />
             <span className="text-[11px] font-medium text-text-muted">
               {connectionStatus === 'connected'
-                ? 'Realtime Live'
+                ? 'Ulangan'
                 : connectionStatus === 'connecting'
-                ? 'Connecting...'
-                : 'Offline'}
+                ? 'Ulanmoqda…'
+                : 'Aloqa uzildi'}
             </span>
           </div>
           <span
@@ -158,7 +158,7 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
           className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-text-muted hover:text-state-error hover:bg-red-50/60 transition-colors"
         >
           <LogOut className="w-4 h-4" />
-          <span>Sign Out</span>
+          <span>Chiqish</span>
         </button>
       </div>
     </aside>

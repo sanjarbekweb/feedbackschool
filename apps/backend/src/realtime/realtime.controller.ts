@@ -1,5 +1,7 @@
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser as Actor } from '@psychology/types';
 import { Controller, Sse, MessageEvent, UseGuards } from '@nestjs/common';
-import { Observable, interval, map, merge } from 'rxjs';
+import { Observable, interval, map, merge, filter } from 'rxjs';
 import { RealtimeService } from './realtime.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -13,8 +15,9 @@ export class RealtimeController {
   @Sse()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.STAFF, UserRole.ADMIN)
-  sendEvents(): Observable<MessageEvent> {
+  sendEvents(@CurrentUser() actor: Actor): Observable<MessageEvent> {
     const events = this.realtimeService.getEventStream().pipe(
+      filter(event => actor.role === UserRole.ADMIN || (!!actor.staffRoleId && event.recipientRoleId === actor.staffRoleId)),
       map((event) => ({
         data: event,
         type: event.type,

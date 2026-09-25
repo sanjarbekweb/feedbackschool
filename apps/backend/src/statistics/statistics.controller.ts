@@ -1,3 +1,5 @@
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { CurrentUser as Actor } from '@psychology/types';
 import { Controller, Get, UseGuards } from '@nestjs/common';
 import { StatisticsService } from './statistics.service';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
@@ -12,8 +14,8 @@ export class StatisticsController {
   constructor(private readonly statisticsService: StatisticsService) {}
 
   @Get()
-  async getStatistics(): Promise<ApiResponse<DashboardStatistics>> {
-    const stats = await this.statisticsService.getDashboardStatistics();
+  async getStatistics(@CurrentUser() actor: Actor): Promise<ApiResponse<DashboardStatistics>> {
+    const stats = await this.statisticsService.getDashboardStatistics(actor);
     return {
       success: true,
       data: stats,

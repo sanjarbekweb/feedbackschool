@@ -22,16 +22,16 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
         <button
           onClick={onToggleMobileMenu}
           className="lg:hidden p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-slate-100 transition-colors"
-          aria-label="Toggle navigation menu"
+          aria-label="Menyuni ochish"
         >
           <Menu className="w-5 h-5" />
         </button>
         <div className="hidden sm:block">
           <h2 className="text-sm font-semibold text-text-primary">
-            Confidential Case Management
+            Murojaatlar
           </h2>
           <p className="text-[11px] text-text-muted">
-            Authorized student psychology & mental health support
+            O‘quvchilar bilan muloqot
           </p>
         </div>
       </div>
@@ -44,10 +44,10 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
           </div>
           <div className="text-left hidden sm:block">
             <span className="text-xs font-semibold text-text-primary block leading-none">
-              {user?.email || 'Authorized Staff'}
+              {user?.email || 'Xodim'}
             </span>
             <span className="text-[10px] text-accent-primary uppercase font-bold tracking-wider">
-              {user?.role || 'STAFF'}
+              {user?.role === 'ADMIN' ? 'Administrator' : 'Xodim'}
             </span>
           </div>
         </div>

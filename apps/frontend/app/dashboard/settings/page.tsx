@@ -1,149 +1,84 @@
 'use client';
 
-import React from 'react';
-import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'motion/react';
-import {
-  Settings,
-  ShieldCheck,
-  User,
-  Key,
-  LogOut,
-  Lock,
-  FileText,
-  Loader2,
-} from 'lucide-react';
-import { apiClient } from '@/lib/api';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { apiClient, paginatedApiClient } from '@/lib/api';
+import { CurrentUser, StaffAccount, StaffRoleItem, UserRole } from '@psychology/types';
+
+const staffSchema = z.object({
+  displayName: z.string().trim().min(1, 'Ismni kiriting').max(80),
+  staffRoleId: z.string().min(1, 'Lavozimni tanlang'),
+  telegramId: z.string().regex(/^\d{1,20}$/, 'Telegram ID faqat raqamlardan iborat'),
+  email: z.union([z.literal(''), z.string().email('Pochtani tekshiring')]),
+  password: z.string().max(72, 'Parol 72 belgidan oshmasin'),
+}).refine(value => (!value.email && !value.password) || (!!value.email && value.password.length >= 12), {
+  message: 'Panel uchun pochta va kamida 12 belgili parol kiriting', path: ['password'],
+});
+type StaffForm = z.infer<typeof staffSchema>;
 
 export default function SettingsPage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: () =>
-      apiClient<{ id: string; email?: string | null; role: string; telegramId?: string | null }>(
-        '/api/auth/me',
-      ),
+  const client = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [roleName, setRoleName] = useState('');
+  const [notice, setNotice] = useState('');
+  const { data: user, isLoading, isError } = useQuery({ queryKey: ['currentUser'], queryFn: () => apiClient<CurrentUser>('/api/auth/me') });
+  const admin = user?.role === UserRole.ADMIN;
+  const roles = useQuery({ queryKey: ['staffRoles'], queryFn: () => apiClient<StaffRoleItem[]>('/api/users/roles'), enabled: admin });
+  const staff = useQuery({ queryKey: ['staff', page], queryFn: () => paginatedApiClient<StaffAccount>(`/api/users/staff?page=${page}&limit=10`), enabled: admin });
+  const form = useForm<StaffForm>({ resolver: zodResolver(staffSchema), defaultValues: { displayName: '', staffRoleId: '', telegramId: '', email: '', password: '' } });
+  const createRole = useMutation({
+    mutationFn: () => apiClient('/api/users/roles', { method: 'POST', body: JSON.stringify({ name: roleName.trim() }) }),
+    onSuccess: () => { setRoleName(''); setNotice('Lavozim qo‘shildi. Endi unga xodim qo‘shing.'); client.invalidateQueries({ queryKey: ['staffRoles'] }); },
   });
-
-  const handleLogout = async () => {
-    try {
-      await apiClient('/api/auth/logout', { method: 'POST' });
-    } finally {
-      queryClient.clear();
-      router.replace('/login');
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="space-y-6 max-w-4xl mx-auto"
-    >
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-accent-primary-dark">
-          Settings & Privacy Controls
-        </h1>
-        <p className="text-xs text-text-muted mt-1">
-          Staff profile credentials, security protocols, and session management
-        </p>
-      </div>
-
-      {/* Staff Profile Card */}
-      <div className="bg-surface rounded-xl border border-border-default shadow-xs overflow-hidden">
-        <div className="p-5 border-b border-border-default flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <User className="w-4 h-4 text-accent-primary" />
-            <h2 className="text-sm font-semibold text-text-primary">Staff Account</h2>
-          </div>
-          <span className="text-[11px] font-bold text-accent-primary uppercase tracking-wider bg-accent-soft px-2.5 py-0.5 rounded-full border border-accent-secondary/40">
-            {user?.role || 'STAFF'}
-          </span>
-        </div>
-
-        <div className="p-6 space-y-4">
-          {isLoading ? (
-            <div className="flex items-center gap-2 text-xs text-text-muted">
-              <Loader2 className="w-4 h-4 animate-spin text-accent-primary" />
-              <span>Loading staff profile...</span>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div>
-                <span className="text-text-muted block mb-1">Email Address</span>
-                <span className="font-medium text-text-primary block">
-                  {user?.email || 'staff@school.edu'}
-                </span>
-              </div>
-              <div>
-                <span className="text-text-muted block mb-1">Assigned Role</span>
-                <span className="font-medium text-text-primary block">
-                  {user?.role || 'STAFF'}
-                </span>
-              </div>
-              <div>
-                <span className="text-text-muted block mb-1">Internal User ID</span>
-                <span className="font-mono text-[11px] text-text-muted block">
-                  {user?.id || '—'}
-                </span>
-              </div>
-              <div>
-                <span className="text-text-muted block mb-1">Authentication Session</span>
-                <span className="inline-flex items-center gap-1.5 text-emerald-700 font-medium">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span>Active (HttpOnly Secure Cookie)</span>
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Privacy Invariants Summary */}
-      <div className="bg-surface rounded-xl border border-border-default shadow-xs p-6 space-y-3">
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-5 h-5 text-accent-primary" />
-          <h2 className="text-sm font-semibold text-text-primary">
-            Security & Privacy Invariants
-          </h2>
-        </div>
-        <p className="text-xs text-text-muted leading-relaxed">
-          The school psychology support system operates under strict data minimization rules:
-        </p>
-        <ul className="space-y-2 text-xs text-text-muted list-disc list-inside">
-          <li>
-            <strong className="text-text-primary">Zero Content Leakage:</strong> Message content is never logged in audit trails, console outputs, or external Telegram notifications.
-          </li>
-          <li>
-            <strong className="text-text-primary">Server-Side Authorization:</strong> Role-based access and student case ownership checks are strictly enforced on every backend request.
-          </li>
-          <li>
-            <strong className="text-text-primary">Anonymized Identifiers:</strong> Personal student names and phone numbers are isolated from shared interfaces; cases use collision-resistant identifiers (e.g. #A81F42).
-          </li>
-        </ul>
-      </div>
-
-      {/* Session Termination Card */}
-      <div className="bg-surface rounded-xl border border-red-200 shadow-xs p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-xs font-semibold text-state-error">Sign Out of Session</h3>
-          <p className="text-[11px] text-text-muted mt-0.5">
-            Terminate your active staff credentials and return to the login screen.
-          </p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition-colors"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span>Sign Out</span>
-        </button>
-      </div>
-    </motion.div>
-  );
+  const createStaff = useMutation({
+    mutationFn: (value: StaffForm) => apiClient('/api/users/staff', { method: 'POST', body: JSON.stringify({ ...value, email: value.email || undefined, password: value.password || undefined }) }),
+    onSuccess: () => { form.reset(); setNotice('Xodim qo‘shildi. U xodimlar botida /start tugmasini bossin.'); client.invalidateQueries({ queryKey: ['staff'] }); },
+  });
+  const toggleStaff = useMutation({
+    mutationFn: (value: StaffAccount) => apiClient(`/api/users/staff/${value.id}`, { method: 'PATCH', body: JSON.stringify({ isActive: !value.isActive }) }),
+    onSuccess: () => { client.invalidateQueries({ queryKey: ['staff'] }); setNotice('Kirish huquqi yangilandi.'); },
+  });
+  const error = createRole.error || createStaff.error || toggleStaff.error;
+  if (isLoading) return <p role="status">Yuklanmoqda…</p>;
+  if (isError) return <p role="alert">Hisob yuklanmadi. Sahifani yangilang.</p>;
+  return <div className="max-w-4xl mx-auto space-y-6">
+    <header><h1 className="text-xl font-semibold">Sozlamalar</h1><p className="text-sm text-text-muted mt-1">{user?.displayName || user?.email} · {admin ? 'Administrator' : 'Xodim'}</p></header>
+    <p className="text-sm text-text-muted">Murojaatlar faqat tanlangan lavozimdagi xodimlar va administratorga ko‘rinadi.</p>
+    {admin && <>
+      <section className="settings-card">
+        <h2 className="text-base font-semibold">Lavozimlar</h2>
+        <p className="text-sm text-text-muted">Masalan: Direktor, Psixolog, Sinf rahbari. Shu lavozimdagi xodimlar murojaatlarni birga ko‘radi.</p>
+        {roles.isError ? <p role="alert">Lavozimlar yuklanmadi.</p> : <ul className="flex flex-wrap gap-2">{roles.data?.map(role => <li key={role.id} className="rounded-lg bg-accent-soft px-3 py-1 text-sm">{role.name}</li>)}</ul>}
+        <form onSubmit={event => { event.preventDefault(); setNotice(''); createRole.mutate(); }} className="flex flex-wrap items-end gap-3">
+          <label className="flex-1">Yangi lavozim<input className="form-input" value={roleName} onChange={event => setRoleName(event.target.value)} maxLength={60} required placeholder="Masalan: Direktor o‘rinbosari" /></label>
+          <button className="primary-button" disabled={!roleName.trim() || createRole.isPending}>{createRole.isPending ? 'Qo‘shilmoqda…' : 'Lavozim qo‘shish'}</button>
+        </form>
+      </section>
+      <section className="settings-card">
+        <h2 className="text-base font-semibold">Xodim qo‘shish</h2>
+        <form onSubmit={form.handleSubmit(value => { setNotice(''); createStaff.mutate(value); })} className="grid sm:grid-cols-2 gap-4">
+          <label>Ism<input className="form-input" {...form.register('displayName')} autoComplete="name" /></label>
+          <label>Lavozim<select className="form-input" {...form.register('staffRoleId')}><option value="">Tanlang</option>{roles.data?.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}</select></label>
+          <label className="sm:col-span-2">Telegram ID<input className="form-input" {...form.register('telegramId')} inputMode="numeric" /><span className="text-sm text-text-muted">Xodim botga /id yuborib, raqamni oladi.</span></label>
+          <label>Elektron pochta <span className="text-text-muted">(panel uchun)</span><input className="form-input" {...form.register('email')} type="email" autoComplete="off" /></label>
+          <label>Parol <span className="text-text-muted">(panel uchun)</span><input className="form-input" {...form.register('password')} type="password" autoComplete="new-password" /></label>
+          <div className="sm:col-span-2 text-sm text-state-error" role="alert">{Object.values(form.formState.errors).map((item, index) => <p key={index}>{item.message}</p>)}</div>
+          <button className="primary-button justify-self-start" disabled={createStaff.isPending}>{createStaff.isPending ? 'Saqlanmoqda…' : 'Xodim qo‘shish'}</button>
+        </form>
+      </section>
+      <section className="settings-card">
+        <h2 className="text-base font-semibold">Xodimlar</h2>
+        {staff.isLoading ? <p role="status">Yuklanmoqda…</p> : staff.isError ? <p role="alert">Xodimlar yuklanmadi.</p> : !staff.data?.data.length ? <p>Hali xodim qo‘shilmagan.</p> : <ul className="divide-y divide-border-default">{staff.data.data.map(person => <li key={person.id} className="py-3 flex items-center justify-between gap-4">
+          <div><p className="font-medium">{person.displayName || person.email || 'Xodim'}</p><p className="text-sm text-text-muted">{person.staffRole?.name} · {person.isActive ? 'Faol' : 'Kirish yopilgan'}</p></div>
+          <button className="secondary-button" disabled={toggleStaff.isPending} onClick={() => toggleStaff.mutate(person)}>{person.isActive ? 'Kirishni yopish' : 'Kirishni ochish'}</button>
+        </li>)}</ul>}
+        {staff.data && staff.data.meta.totalPages > 1 && <div className="flex items-center gap-3"><button className="secondary-button" disabled={!staff.data.meta.hasPreviousPage} onClick={() => setPage(page - 1)}>Oldingi</button><span>{page} / {staff.data.meta.totalPages}</span><button className="secondary-button" disabled={!staff.data.meta.hasNextPage} onClick={() => setPage(page + 1)}>Keyingi</button></div>}
+      </section>
+      {error && <p role="alert" className="text-state-error">{error.message}</p>}
+      <p role="status" className="text-sm text-accent-primary-dark">{notice}</p>
+    </>}
+  </div>;
 }

@@ -44,7 +44,7 @@ async function bootstrap() {
         success: false,
         error: {
           code: 'INVALID_ORIGIN',
-          message: 'Request origin is not allowed.',
+          message: 'Bu manzildan kirishga ruxsat yo‘q.',
         },
       });
       return;

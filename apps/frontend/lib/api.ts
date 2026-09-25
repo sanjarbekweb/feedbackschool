@@ -42,14 +42,14 @@ async function requestEnvelope<T, TMeta = never>(
     success: false,
     error: {
       code: 'PARSE_ERROR',
-      message: 'Failed to parse response from server',
+      message: 'Server javobini o‘qib bo‘lmadi.',
     },
   }));
 
   if (!response.ok || !data.success) {
     throw new ApiError(
       data.error?.code || 'UNKNOWN_ERROR',
-      data.error?.message || `Request failed with status ${response.status}`,
+      data.error?.message || `So‘rov bajarilmadi (${response.status}).`,
       data.error?.details,
       response.status,
     );
@@ -75,7 +75,7 @@ export async function paginatedApiClient<T>(
   if (!Array.isArray(response.data) || !response.meta) {
     throw new ApiError(
       'INVALID_PAGINATION_RESPONSE',
-      'Server response did not include pagination metadata',
+      'Ro‘yxatni yuklab bo‘lmadi.',
     );
   }
 

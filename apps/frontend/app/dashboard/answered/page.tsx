@@ -8,8 +8,8 @@ export default function AnsweredPage() {
   return (
     <ConversationList
       initialStatus={ConversationStatus.ANSWERED}
-      title="Answered Cases"
-      description="Student conversations that have received staff responses"
+      title="Javob berilganlar"
+      description="Javob yuborilgan murojaatlar"
     />
   );
 }

@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowLeft,
   Send,
@@ -23,21 +23,23 @@ import {
   ConversationMessage,
   ConversationStatus,
   SenderType,
-  PaginatedResponse,
 } from '@psychology/types';
 import { StatusBadge, CategoryBadge } from '@/components/badges';
 
 const messageSchema = z.object({
   content: z
     .string()
-    .min(1, 'Message cannot be empty')
-    .max(4000, 'Message cannot exceed 4000 characters'),
+    .trim()
+    .min(1, 'Xabaringizni yozing')
+    .max(4000, 'Xabar 4000 belgidan oshmasin'),
 });
 
 type MessageFormData = z.infer<typeof messageSchema>;
 
 export default function ConversationDetailPage() {
   const params = useParams();
+  const [messagePage, setMessagePage] = useState(1);
+  const reduceMotion = useReducedMotion();
   const router = useRouter();
   const queryClient = useQueryClient();
   const conversationId = params?.id as string;
@@ -54,18 +56,18 @@ export default function ConversationDetailPage() {
 
   // 2. Fetch Messages
   const { data: messagesData, isLoading: messagesLoading } = useQuery({
-    queryKey: ['messages', conversationId],
+    queryKey: ['messages', conversationId, messagePage],
     queryFn: () =>
       paginatedApiClient<ConversationMessage>(
-        `/api/conversations/${conversationId}/messages?limit=100`,
+        `/api/conversations/${conversationId}/messages?limit=20&page=${messagePage}`,
       ),
     enabled: Boolean(conversationId),
   });
 
   // Scroll to bottom on new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesData?.data?.length]);
+    messagesEndRef.current?.scrollIntoView({ behavior: reduceMotion ? 'instant' : 'smooth' });
+  }, [messagesData?.data?.length, reduceMotion]);
 
   // 3. React Hook Form for Composer
   const {
@@ -87,43 +89,19 @@ export default function ConversationDetailPage() {
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onMutate: async (data: MessageFormData) => {
-      setComposerError(null);
-      await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
-      const previousMessages = queryClient.getQueryData<PaginatedResponse<ConversationMessage>>([
-        'messages',
-        conversationId,
-      ]);
-      const optimisticMessage: ConversationMessage = {
-        id: `pending-${Date.now()}`,
-        conversationId,
-        content: data.content.trim(),
-        senderType: SenderType.STAFF,
-        createdAt: new Date().toISOString(),
-        readAt: null,
-      };
-      queryClient.setQueryData(['messages', conversationId], (current?: typeof previousMessages) =>
-        current
-          ? { ...current, data: [...current.data, optimisticMessage] }
-          : current,
-      );
-      reset();
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      return { previousMessages };
-    },
+    onMutate: () => { setComposerError(null); },
     onSuccess: () => {
+      reset();
+      setMessagePage(1);
       setComposerError(null);
       queryClient.invalidateQueries({ queryKey: ['conversation', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
       queryClient.invalidateQueries({ queryKey: ['conversations'] });
       queryClient.invalidateQueries({ queryKey: ['statistics'] });
     },
-    onError: (err: unknown, _data, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['messages', conversationId], context.previousMessages);
-      }
+    onError: (err: unknown) => {
       setComposerError(
-        err instanceof ApiError ? err.message : 'Failed to send response',
+        err instanceof ApiError ? err.message : 'Javob yuborilmadi',
       );
     },
   });
@@ -148,6 +126,7 @@ export default function ConversationDetailPage() {
       return { previousConversation };
     },
     onError: (_err, _status, context) => {
+      setComposerError("Holat o‘zgarmadi. Qayta urinib ko‘ring.");
       if (context?.previousConversation) {
         queryClient.setQueryData(['conversation', conversationId], context.previousConversation);
       }
@@ -167,7 +146,7 @@ export default function ConversationDetailPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-xs text-text-muted">
         <Loader2 className="w-6 h-6 animate-spin text-accent-primary" />
-        <span>Loading case details...</span>
+        <span>Murojaat yuklanmoqda…</span>
       </div>
     );
   }
@@ -176,12 +155,12 @@ export default function ConversationDetailPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center gap-3 text-xs">
         <ShieldAlert className="w-8 h-8 text-state-error" />
-        <p className="font-semibold text-text-primary">Case Not Found</p>
+        <p className="font-semibold text-text-primary">Murojaat topilmadi</p>
         <button
           onClick={() => router.push('/dashboard/inbox')}
           className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-text-primary"
         >
-          Return to Inbox
+          Murojaatlarga qaytish
         </button>
       </div>
     );
@@ -189,8 +168,8 @@ export default function ConversationDetailPage() {
 
   const isClosed = conv.status === ConversationStatus.CLOSED;
   const studentAnon = conv.student?.studentIdentifier
-    ? `Student #${conv.student.studentIdentifier}`
-    : 'Student';
+    ? `O‘quvchi #${conv.student.studentIdentifier}`
+    : 'O‘quvchi';
 
   return (
     <motion.div
@@ -205,7 +184,7 @@ export default function ConversationDetailPage() {
           <button
             onClick={() => router.back()}
             className="p-1.5 rounded-lg hover:bg-slate-100 text-text-muted hover:text-text-primary transition-colors"
-            aria-label="Go back"
+            aria-label="Orqaga"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -221,7 +200,7 @@ export default function ConversationDetailPage() {
               <StatusBadge status={conv.status} />
             </div>
             <p className="text-[11px] text-text-muted mt-0.5">
-              Opened on {new Date(conv.createdAt).toLocaleString('en-US')}
+              Ochilgan {new Date(conv.createdAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}
             </p>
           </div>
         </div>
@@ -237,7 +216,7 @@ export default function ConversationDetailPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-primary transition-colors disabled:opacity-50"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Mark Answered</span>
+              <span>Javob berilgan deb belgilash</span>
             </button>
           )}
 
@@ -250,7 +229,7 @@ export default function ConversationDetailPage() {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-muted hover:text-slate-700 transition-colors disabled:opacity-50"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Close Case</span>
+              <span>Yopish</span>
             </button>
           ) : (
             <button
@@ -260,7 +239,7 @@ export default function ConversationDetailPage() {
               disabled={updateStatusMutation.isPending}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-muted transition-colors disabled:opacity-50"
             >
-              <span>Reopen Case</span>
+              <span>Qayta ochish</span>
             </button>
           )}
         </div>
@@ -268,6 +247,11 @@ export default function ConversationDetailPage() {
 
       {/* 2. Message History Timeline */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50">
+        {messagesData && messagesData.meta.totalPages > 1 && <div className="flex items-center justify-center gap-3 text-sm">
+          <button className="secondary-button" disabled={!messagesData.meta.hasPreviousPage} onClick={() => setMessagePage(messagePage - 1)}>Yangiroq</button>
+          <span>{messagePage} / {messagesData.meta.totalPages}</span>
+          <button className="secondary-button" disabled={!messagesData.meta.hasNextPage} onClick={() => setMessagePage(messagePage + 1)}>Oldinroq</button>
+        </div>}
         {messagesData?.data.map((msg) => {
           const isStaff = msg.senderType === SenderType.STAFF;
           return (
@@ -292,11 +276,11 @@ export default function ConversationDetailPage() {
                   }`}
                 >
                   <span className="font-semibold">
-                    {isStaff ? 'Psychology Staff' : studentAnon}
+                    {isStaff ? 'Xodim' : studentAnon}
                   </span>
                   <span>•</span>
                   <span>
-                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                    {new Date(msg.createdAt).toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent',
                       hour: '2-digit',
                       minute: '2-digit',
                     })}
@@ -319,7 +303,7 @@ export default function ConversationDetailPage() {
         {isClosed ? (
           <div className="p-3.5 rounded-lg bg-slate-100/80 text-center text-xs text-text-muted flex items-center justify-center gap-2">
             <Lock className="w-4 h-4 text-slate-400" />
-            <span>This conversation is closed. Reopen the case to submit responses.</span>
+            <span>Murojaat yopilgan. Javob yozish uchun qayta oching.</span>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSendMessage)} className="space-y-2">
@@ -332,8 +316,10 @@ export default function ConversationDetailPage() {
 
             <div className="relative">
               <textarea
-                placeholder="Write a calm, confidential response to the student..."
+                placeholder="Javobingizni yozing…"
                 rows={3}
+                aria-label="Javobingiz"
+                disabled={sendMessageMutation.isPending}
                 {...register('content')}
                 className="w-full p-3 text-xs rounded-lg border border-border-default bg-surface focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary resize-none placeholder:text-text-muted/70"
               />
@@ -347,22 +333,22 @@ export default function ConversationDetailPage() {
                     : 'text-text-muted'
                 }`}
               >
-                {contentValue.length} / 4000 characters
+                {contentValue.length} / 4000 belgi
               </span>
 
               <button
                 type="submit"
-                disabled={!contentValue.trim() || contentValue.length > 4000}
+                disabled={sendMessageMutation.isPending || !contentValue.trim() || contentValue.length > 4000}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-primary-dark text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendMessageMutation.isPending ? (
                   <>
                     <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Sent</span>
+                    <span>Yuborilmoqda…</span>
                   </>
                 ) : (
                   <>
-                    <span>Send Response</span>
+                    <span>Yuborish</span>
                     <Send className="w-3.5 h-3.5" />
                   </>
                 )}

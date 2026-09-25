@@ -1,3 +1,4 @@
+import { persistentSession } from '../utils/session-middleware';
 import { Bot, Context } from 'grammy';
 import { Logger } from '@nestjs/common';
 import { ConversationsService } from '../../conversations/conversations.service';
@@ -21,11 +22,11 @@ import {
 type StaffContext = Context & { staffUser?: CurrentUser };
 
 const CATEGORY_LABELS: Record<string, string> = {
-  GENERAL: 'General Inquiry',
-  ACADEMIC: 'Academic Stress',
-  PERSONAL: 'Personal / Emotional',
-  SOCIAL: 'Social / Relationships',
-  URGENT: 'Urgent Support',
+  GENERAL: 'Umumiy savol',
+  ACADEMIC: 'O‘qish',
+  PERSONAL: 'Shaxsiy masala',
+  SOCIAL: 'Munosabatlar',
+  URGENT: 'Shoshilinch yordam',
 };
 
 export class StaffBotController {
@@ -39,6 +40,7 @@ export class StaffBotController {
     private readonly usersService: UsersService,
     private readonly statisticsService: StatisticsService,
   ) {
+    this.bot.use(persistentSession('staff', this.sessions, this.usersService));
     this.registerMiddlewareAndHandlers();
   }
 
@@ -62,11 +64,11 @@ export class StaffBotController {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMin = Math.floor(diffMs / 60000);
-    if (diffMin < 60) return `${diffMin}m ago`;
+    if (diffMin < 60) return `${diffMin} daqiqa oldin`;
     const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffHours < 24) return `${diffHours} soat oldin`;
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
+    return `${diffDays} kun oldin`;
   }
 
   public async authMiddleware(ctx: Context, next: () => Promise<void>) {
@@ -75,16 +77,16 @@ export class StaffBotController {
     const telegramId = String(ctx.from.id);
     const user = await this.usersService.findByTelegramId(telegramId);
 
-    if (!user || (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)) {
+    if (!user || !user.isActive || (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)) {
       this.logger.warn('Unauthorized staff bot access attempt.');
       if (ctx.callbackQuery) {
         await ctx.answerCallbackQuery({
-          text: '⛔ Access Restricted. Authorized psychology staff only.',
+          text: '⛔ Kirish uchun ruxsat kerak.',
           show_alert: true,
         });
       } else {
         await ctx.reply(
-          '⛔ *Access Restricted.*\n\nThis portal is exclusively for authorized school psychology staff.',
+          '⛔ *Ruxsat yo‘q.*\n\nKirish uchun administratorga murojaat qiling.',
           { parse_mode: 'Markdown' },
         );
       }
@@ -105,6 +107,9 @@ export class StaffBotController {
   }
 
   private registerMiddlewareAndHandlers() {
+    this.bot.command('id', async ctx => {
+      if (ctx.from && ctx.chat?.type === 'private') await ctx.reply(`Telegram ID: ${ctx.from.id}`);
+    });
     // 1. Immutable Telegram User ID Authorization Middleware
     this.bot.use((ctx, next) => this.authMiddleware(ctx, next));
 
@@ -149,6 +154,13 @@ export class StaffBotController {
         return;
       }
 
+      if (data.startsWith('staff:history:')) {
+        const [, , id = '', pageText = '1'] = data.split(':');
+        await ctx.answerCallbackQuery();
+        await this.sendCaseDetail(ctx, id, Math.max(1, parseInt(pageText, 10) || 1));
+        return;
+      }
+
       if (data.startsWith('staff:case:')) {
         const conversationId = data.substring(11);
         await ctx.answerCallbackQuery();
@@ -165,14 +177,14 @@ export class StaffBotController {
 
       if (data.startsWith('staff:action:mark_answered:')) {
         const conversationId = data.substring(27);
-        await ctx.answerCallbackQuery({ text: 'Marked as Answered' });
+        await ctx.answerCallbackQuery({ text: 'Javob berilgan deb belgilandi' });
         await this.handleMarkAnswered(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:close:')) {
         const conversationId = data.substring(19);
-        await ctx.answerCallbackQuery({ text: 'Case Closed' });
+        await ctx.answerCallbackQuery({ text: 'Murojaat yopildi' });
         await this.handleCloseCase(ctx, conversationId);
         return;
       }
@@ -200,13 +212,13 @@ export class StaffBotController {
 
       if (session.state === StaffSessionState.AWAITING_REPLY) {
         if (!ctx.message.text) {
-          await ctx.reply('Please send your response as text.');
+          await ctx.reply('Faqat matn yuboring.');
           return;
         }
 
         const text = ctx.message.text.trim();
         if (text.length > 4000) {
-          await ctx.reply('Response is too long. Please keep it under 4000 characters.');
+          await ctx.reply('Javob 4000 belgidan oshmasin.');
           return;
         }
 
@@ -217,7 +229,7 @@ export class StaffBotController {
 
   private async sendMainMenu(ctx: Context) {
     await ctx.reply(
-      '🏥 *Psychology Staff Portal*\n\nManage student cases, view statistics, and review responses.',
+      '🏥 *Xodimlar paneli*\n\nManage student cases, view statistics, and review responses.',
       {
         parse_mode: 'Markdown',
         reply_markup: StaffKeyboards.mainMenu(),
@@ -237,18 +249,18 @@ export class StaffBotController {
 
     const result = await this.conversationsService.findAll(filterDto, staffUser);
 
-    let title = '📥 All Cases';
-    if (filter === 'UNANSWERED') title = '⏳ Unanswered Cases';
-    if (filter === 'ANSWERED') title = '✅ Answered Cases';
+    let title = '📥 Barcha murojaatlar';
+    if (filter === 'UNANSWERED') title = '⏳ Javob kutilmoqda';
+    if (filter === 'ANSWERED') title = '✅ Javob berilganlar';
 
     if (result.meta.total === 0) {
-      await ctx.reply(`${title}\n\nNo cases found in this view.`, {
+      await ctx.reply(`${title}\n\nMurojaat yo‘q.`, {
         reply_markup: StaffKeyboards.caseList([], filter, 1, 1),
       });
       return;
     }
 
-    let messageText = `*${title}* (Page ${result.meta.page}/${result.meta.totalPages})\n\n`;
+    let messageText = `*${title}* (Sahifa ${result.meta.page}/${result.meta.totalPages})\n\n`;
 
     for (const c of result.data) {
       const cat = CATEGORY_LABELS[c.category] || c.category;
@@ -267,33 +279,25 @@ export class StaffBotController {
     });
   }
 
-  private async sendCaseDetail(ctx: Context, conversationId: string) {
-    const conv = await this.conversationsService.findOne(conversationId);
-    const messagesResult = await this.messagesService.getMessages(conversationId, 1, 50);
+  private async sendCaseDetail(ctx: Context, conversationId: string, page = 1) {
+    const conv = await this.conversationsService.findOne(conversationId, this.requireStaffUser(ctx));
+    const messagesResult = await this.messagesService.getMessages(conversationId, page, 5);
 
     const cat = CATEGORY_LABELS[conv.category] || conv.category;
-    const studentAnon = conv.student?.studentIdentifier ? `Student #${conv.student.studentIdentifier}` : 'Student';
+    const studentAnon = conv.student?.studentIdentifier ? `O‘quvchi #${conv.student.studentIdentifier}` : 'O‘quvchi';
 
-    let statusLabel = '⏳ Unanswered';
-    if (conv.status === ConversationStatus.ANSWERED) statusLabel = '✅ Answered';
-    if (conv.status === ConversationStatus.CLOSED) statusLabel = '🔒 Closed';
+    let statusLabel = '⏳ Javob kutilmoqda';
+    if (conv.status === ConversationStatus.ANSWERED) statusLabel = '✅ Javob berilgan';
+    if (conv.status === ConversationStatus.CLOSED) statusLabel = '🔒 Yopilgan';
 
-    let text = `Case ${conv.caseId}\n` +
-      `Student: ${studentAnon}\n` +
-      `Category: ${cat}\n` +
-      `Status: ${statusLabel}\n` +
-      `Opened: ${new Date(conv.createdAt).toLocaleString('en-US')}\n` +
+    let text = `Murojaat ${conv.caseId}\n` +
+      `O‘quvchi: ${studentAnon}\n` +
+      `Mavzu: ${cat}\n` +
+      `Holat: ${statusLabel}\n` +
       `────────────────────────\n`;
 
     for (const msg of messagesResult.data) {
-      const timeStr = new Date(msg.createdAt).toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const senderHeader =
-        msg.senderType === SenderType.STUDENT ? `🧑 Student (${timeStr}):` : `👩‍⚕️ Staff (${timeStr}):`;
+      const senderHeader = msg.senderType === SenderType.STUDENT ? '🧑 O‘quvchi:' : '💬 Xodim:';
       text += `\n${senderHeader}\n${msg.content}\n`;
     }
 
@@ -306,16 +310,16 @@ export class StaffBotController {
       await ctx.reply(
         chunk,
         index === chunks.length - 1
-          ? { reply_markup: StaffKeyboards.caseDetail(conv.id, isClosed) }
+          ? { reply_markup: StaffKeyboards.caseDetail(conv.id, isClosed, messagesResult.meta.page, messagesResult.meta.totalPages) }
           : undefined,
       );
     }
   }
 
   private async handleStartReply(ctx: Context, conversationId: string) {
-    const conv = await this.conversationsService.findOne(conversationId);
+    const conv = await this.conversationsService.findOne(conversationId, this.requireStaffUser(ctx));
     if (conv.status === ConversationStatus.CLOSED) {
-      await ctx.reply('Cannot reply to a closed case.');
+      await ctx.reply('Murojaat yopilgan.');
       return;
     }
 
@@ -326,7 +330,7 @@ export class StaffBotController {
     });
 
     await ctx.reply(
-      `Replying to Case *${conv.caseId}*.\n\nPlease type and send your response message:`,
+      `${conv.caseId}: javobingizni yozing.`,
       { parse_mode: 'Markdown' },
     );
   }
@@ -344,22 +348,22 @@ export class StaffBotController {
         session.activeConversationId,
         { content },
         staffUser,
+        ctx.update?.update_id === undefined ? undefined : `staff:${ctx.update.update_id}`,
       );
 
       const caseId = session.activeCaseId || '';
       this.resetSession(ctx.from!.id);
 
       await ctx.reply(
-        `✅ Response sent for Case *${caseId}*.\nStatus updated to *Answered*.`,
+        `✅ ${caseId}: javob yuborildi.`,
         {
           parse_mode: 'Markdown',
           reply_markup: StaffKeyboards.mainMenu(),
         },
       );
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error sending staff response: ${message}`);
-      await ctx.reply('An error occurred while sending the response.');
+    } catch {
+      this.logger.error('Bot amalini bajarib bo‘lmadi.');
+      await ctx.reply('Javob yuborilmadi. Qayta urinib ko‘ring.');
     }
   }
 
@@ -384,21 +388,21 @@ export class StaffBotController {
   }
 
   private async sendStudentsList(ctx: Context, page: number) {
-    const result = await this.usersService.listStudents(page, 5);
+    const result = await this.usersService.listStudents(page, 5, this.requireStaffUser(ctx));
 
     if (result.meta.total === 0) {
-      await ctx.reply('No students registered yet.', {
+      await ctx.reply('Hali o‘quvchi yo‘q.', {
         reply_markup: StaffKeyboards.studentsList(1, 1),
       });
       return;
     }
 
-    let text = `👥 *Students* (Page ${result.meta.page}/${result.meta.totalPages})\n\n`;
+    let text = `👥 *O‘quvchilar* (Sahifa ${result.meta.page}/${result.meta.totalPages})\n\n`;
 
     for (const student of result.data) {
       const code = student.studentIdentifier || 'S-????';
       const casesCount = student._count.conversations;
-      text += `• Student #${code} — ${casesCount} case(s)\n`;
+      text += `• O‘quvchi #${code} — ${casesCount} ta murojaat\n`;
     }
 
     await ctx.reply(text, {
@@ -408,16 +412,16 @@ export class StaffBotController {
   }
 
   private async sendStats(ctx: Context) {
-    const stats = await this.statisticsService.getDashboardStatistics();
+    const stats = await this.statisticsService.getDashboardStatistics(this.requireStaffUser(ctx));
 
     const text =
-      `📊 *Support Portal Statistics*\n\n` +
-      `• Total Cases: *${stats.totalConversations}*\n` +
-      `• ⏳ Unanswered: *${stats.unansweredCount}*\n` +
-      `• ✅ Answered: *${stats.answeredCount}*\n` +
-      `• 🔒 Closed: *${stats.closedCount}*\n` +
-      `• Recent Activity (24h): *${stats.recentActivityCount}*\n` +
-      `• Avg Response Time: *${stats.averageResponseTimeMinutes} min*`;
+      `📊 *Statistika*\n\n` +
+      `• Jami murojaatlar: *${stats.totalConversations}*\n` +
+      `• ⏳ Javob kutilmoqda: *${stats.unansweredCount}*\n` +
+      `• ✅ Javob berilgan: *${stats.answeredCount}*\n` +
+      `• 🔒 Yopilgan: *${stats.closedCount}*\n` +
+      `• So‘nggi 24 soatda: *${stats.recentActivityCount}*\n` +
+      `• O‘rtacha javob vaqti: *${stats.averageResponseTimeMinutes ?? '—'} daqiqa*`;
 
     await ctx.reply(text, {
       parse_mode: 'Markdown',

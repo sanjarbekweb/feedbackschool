@@ -46,13 +46,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       user.credentialVersion !== payload.credentialVersion ||
       (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)
     ) {
-      throw new UnauthorizedException('User no longer exists or session expired.');
+      throw new UnauthorizedException('Seans tugadi. Qayta kiring.');
     }
     return {
       id: user.id,
       telegramId: user.telegramId,
       email: user.email,
       role: user.role,
+      staffRoleId: user.staffRoleId,
+      displayName: user.displayName,
       studentIdentifier: user.studentIdentifier,
     };
   }

@@ -48,3 +48,18 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Apple design: clear hierarchy, immediate press feedback, comfortable targets. */
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 1rem; line-height: 1.5; }
+h1, h2 { letter-spacing: -0.02em; font-optical-sizing: auto; }
+button, a, input, select, textarea { touch-action: manipulation; }
+button, select, input { min-height: 2.75rem; }
+button:active:not(:disabled) { transform: scale(0.98); }
+button:disabled { cursor: not-allowed; opacity: .55; }
+.settings-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: .75rem; padding: 1.5rem; display: grid; gap: 1rem; }
+.form-input { display: block; width: 100%; margin-top: .375rem; padding: .625rem .75rem; border: 1px solid var(--border-default); border-radius: .5rem; background: var(--bg-surface); }
+.primary-button, .secondary-button { border-radius: .5rem; padding: .625rem 1rem; font-weight: 600; }
+.primary-button { background: var(--accent-primary-dark); color: white; }
+.secondary-button { background: var(--bg-surface); border: 1px solid var(--border-default); }
+@media (prefers-reduced-motion: reduce) { button:active:not(:disabled) { transform: none; } }
+@media (prefers-contrast: more) { :root { --text-muted: #334155; --border-default: #64748B; } }
