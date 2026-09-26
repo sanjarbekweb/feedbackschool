@@ -79,27 +79,29 @@ export function ConversationList({
       className="space-y-6 max-w-7xl mx-auto"
     >
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-bold text-accent-primary-dark">{title}</h1>
-        <p className="text-xs text-text-muted mt-1">{description}</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{title}</h1>
+          <p className="text-xs text-slate-400 mt-0.5">{description}</p>
+        </div>
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="bg-surface rounded-xl border border-border-default shadow-xs p-4 space-y-3">
+      <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs p-4 space-y-3">
         <div className="flex flex-col md:flex-row items-center gap-3">
           {/* Search by Case ID */}
           <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-text-muted absolute left-3 top-2.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
             <input
               type="text"
               aria-label="Murojaat raqamini qidirish"
-              placeholder="Murojaat raqamini qidirish…"
+              placeholder="Murojaat raqamini qidirish (#A81F42)…"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-border-default bg-surface focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary"
+              className="w-full pl-9 pr-4 py-2 text-xs rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] transition-all"
             />
           </div>
 
@@ -112,7 +114,7 @@ export function ConversationList({
                 setPage(1);
               }}
               aria-label="Mavzu bo‘yicha saralash"
-              className="px-2.5 py-1.5 rounded-lg border border-border-default bg-surface text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+              className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
             >
               <option value="ALL">Barcha mavzular</option>
               <option value={ConversationCategory.GENERAL}>Umumiy savol</option>
@@ -122,7 +124,7 @@ export function ConversationList({
               <option value={ConversationCategory.URGENT}>Shoshilinch yordam</option>
             </select>
 
-            {/* Status Filter (if not locked by initialStatus) */}
+            {/* Status Filter */}
             {!initialStatus && (
               <select
                 value={status}
@@ -131,7 +133,7 @@ export function ConversationList({
                   setPage(1);
                 }}
                 aria-label="Holat bo‘yicha saralash"
-                className="px-2.5 py-1.5 rounded-lg border border-border-default bg-surface text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+                className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
               >
                 <option value="ALL">Barcha holatlar</option>
                 <option value={ConversationStatus.UNANSWERED}>⏳ Javob kutilmoqda</option>
@@ -148,7 +150,7 @@ export function ConversationList({
                 setSortBy(e.target.value as 'newest' | 'oldest')
               }
               aria-label="Tartiblash"
-              className="px-2.5 py-1.5 rounded-lg border border-border-default bg-surface text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary/20"
+              className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
             >
               <option value="newest">Avval yangilari</option>
               <option value="oldest">Avval eskilari</option>
@@ -158,61 +160,63 @@ export function ConversationList({
       </div>
 
       {/* Conversations List Table/Cards */}
-      <div className="bg-surface rounded-xl border border-border-default shadow-xs overflow-hidden">
+      <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs overflow-hidden">
         {isLoading ? (
-          <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-text-muted">
-            <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
+          <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin text-[#2563EB]" />
             <span>Murojaatlar yuklanmoqda…</span>
           </div>
         ) : isError ? (
           <div className="p-12 text-center space-y-2" role="alert">
-            <p className="text-xs font-semibold text-state-error">
+            <p className="text-xs font-semibold text-red-600 dark:text-red-400">
               Murojaatlar yuklanmadi
             </p>
-            <p className="text-[11px] text-text-muted">
+            <p className="text-[11px] text-slate-400">
               Internetni tekshirib, qayta urinib ko‘ring.
             </p>
           </div>
         ) : data?.data.length === 0 ? (
           <div className="p-16 text-center space-y-2">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 text-text-muted mx-auto flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 mx-auto flex items-center justify-center">
               <Inbox className="w-5 h-5" />
             </div>
-            <p className="text-xs font-semibold text-text-primary">Murojaat topilmadi</p>
-            <p className="text-[11px] text-text-muted">
+            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">Murojaat topilmadi</p>
+            <p className="text-[11px] text-slate-400">
               Qidiruv yoki filtrni o‘zgartiring.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border-default/60">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {data?.data.map((conv) => {
               const isUnanswered = conv.status === ConversationStatus.UNANSWERED;
               return (
                 <Link
                   key={conv.id}
                   href={`/dashboard/conversations/${conv.id}`}
-                  className={`p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
-                    isUnanswered ? 'bg-amber-50/20 hover:bg-amber-50/40' : 'hover:bg-slate-50/80'
+                  className={`p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                    isUnanswered
+                      ? 'bg-blue-50/20 dark:bg-blue-950/20 hover:bg-blue-50/50 dark:hover:bg-blue-950/40'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-mono font-bold text-xs text-accent-primary-dark">
+                      <span className="font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">
                         {conv.caseId}
                       </span>
-                      <span className="text-xs font-medium text-text-primary">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                         {conv.student?.studentIdentifier
                           ? `O‘quvchi #${conv.student.studentIdentifier}`
                           : 'O‘quvchi'}
                       </span>
                       <CategoryBadge category={conv.category} />
                       {isUnanswered && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 uppercase tracking-wider bg-amber-100/70 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-100/70 dark:bg-blue-900/50 px-2.5 py-0.5 rounded-full">
                           Javob kutilmoqda
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-text-muted flex items-center gap-3">
+                    <div className="text-[11px] text-slate-400 flex items-center gap-3">
                       <span>
                         Ochilgan{' '}
                         {new Date(conv.createdAt).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent',
@@ -241,7 +245,7 @@ export function ConversationList({
 
                   <div className="flex items-center gap-3 self-end sm:self-center">
                     <StatusBadge status={conv.status} />
-                    <ChevronRight className="w-4 h-4 text-text-muted" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
                   </div>
                 </Link>
               );
@@ -251,7 +255,7 @@ export function ConversationList({
 
         {/* Pagination Footer */}
         {data && data.meta.totalPages > 1 && (
-          <div className="p-4 border-t border-border-default flex items-center justify-between text-xs text-text-muted">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
             <span>
               Ko‘rsatilmoqda {(data.meta.page - 1) * data.meta.limit + 1}–{' '}
               {Math.min(data.meta.page * data.meta.limit, data.meta.total)} /{' '}
@@ -261,18 +265,18 @@ export function ConversationList({
               <button
                 disabled={!data.meta.hasPreviousPage}
                 onClick={() => setPage(page - 1)}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 dark:text-slate-200"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Oldingi</span>
               </button>
-              <span className="font-semibold text-text-primary px-1">
+              <span className="font-bold text-slate-900 dark:text-white px-1">
                 {data.meta.page} / {data.meta.totalPages}
               </span>
               <button
                 disabled={!data.meta.hasNextPage}
                 onClick={() => setPage(page + 1)}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 dark:text-slate-200"
               >
                 <span>Keyingi</span>
                 <ChevronRight className="w-3.5 h-3.5" />

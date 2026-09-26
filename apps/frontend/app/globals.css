@@ -8,14 +8,29 @@
   --text-primary: #0F172A;
   --text-muted: #64748B;
   --border-default: #E2E8F0;
-  --accent-primary: #2196F3;
-  --accent-primary-dark: #0D47A1;
-  --accent-soft: #E3F2FD;
-  --accent-secondary: #90CAF9;
+  --accent-primary: #2563EB;
+  --accent-primary-dark: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --accent-secondary: #93C5FD;
   --state-success: #16A34A;
   --state-warning: #F59E0B;
   --state-error: #DC2626;
-  --radius: 0.5rem;
+  --radius: 1rem;
+}
+
+.dark {
+  --bg-base: #090B11;
+  --bg-surface: #111420;
+  --text-primary: #F8FAFC;
+  --text-muted: #94A3B8;
+  --border-default: #1E293B;
+  --accent-primary: #3B82F6;
+  --accent-primary-dark: #2563EB;
+  --accent-soft: #1E293B;
+  --accent-secondary: #60A5FA;
+  --state-success: #22C55E;
+  --state-warning: #FBBF24;
+  --state-error: #EF4444;
 }
 
 body {
@@ -23,6 +38,7 @@ body {
   color: var(--text-primary);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   min-height: 100vh;
+  transition: background-color 150ms ease, color 150ms ease;
 }
 
 :focus-visible {
@@ -57,7 +73,7 @@ button, select, input { min-height: 2.75rem; }
 button:active:not(:disabled) { transform: scale(0.98); }
 button:disabled { cursor: not-allowed; opacity: .55; }
 .settings-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: .75rem; padding: 1.5rem; display: grid; gap: 1rem; }
-.form-input { display: block; width: 100%; margin-top: .375rem; padding: .625rem .75rem; border: 1px solid var(--border-default); border-radius: .5rem; background: var(--bg-surface); }
+.form-input { display: block; width: 100%; margin-top: .375rem; padding: .625rem .75rem; border: 1px solid var(--border-default); border-radius: .5rem; background: var(--bg-surface); color: var(--text-primary); }
 .primary-button, .secondary-button { border-radius: .5rem; padding: .625rem 1rem; font-weight: 600; }
 .primary-button { background: var(--accent-primary-dark); color: white; }
 .secondary-button { background: var(--bg-surface); border: 1px solid var(--border-default); }

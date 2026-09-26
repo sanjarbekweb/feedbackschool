@@ -4,7 +4,7 @@
   "private": true,
   "description": "Next.js Dashboard for School Psychology Support System",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"

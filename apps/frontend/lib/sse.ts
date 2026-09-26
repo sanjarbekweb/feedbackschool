@@ -40,21 +40,29 @@ export function useRealtimeEvents(enabled = true) {
       eventSource.onopen = () => {
         reconnectAttempt = 0;
         setStatus('connected');
-        void queryClient.invalidateQueries();
       };
 
-      const handleEvent = () => {
+      const handleEvent = (eventType: RealtimeEvent['type']) => {
         if (refreshTimer) return;
         refreshTimer = setTimeout(() => {
           refreshTimer = undefined;
-          for (const key of ['conversations', 'statistics', 'conversation', 'messages', 'students']) {
-            void queryClient.invalidateQueries({ queryKey: [key] });
+          if (eventType === 'STATS_UPDATED') {
+            void queryClient.invalidateQueries({ queryKey: ['statistics'] });
+          } else if (eventType === 'MESSAGE_CREATED') {
+            void queryClient.invalidateQueries({ queryKey: ['messages'] });
+            void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          } else if (eventType === 'CONVERSATION_CREATED' || eventType === 'CONVERSATION_UPDATED') {
+            void queryClient.invalidateQueries({ queryKey: ['conversations'] });
+            void queryClient.invalidateQueries({ queryKey: ['statistics'] });
+            void queryClient.invalidateQueries({ queryKey: ['conversation'] });
+          } else {
+            void queryClient.invalidateQueries({ queryKey: ['conversations'] });
           }
         }, 300);
       };
 
       EVENT_TYPES.forEach((eventType) => {
-        eventSource?.addEventListener(eventType, handleEvent as EventListener);
+        eventSource?.addEventListener(eventType, (() => handleEvent(eventType)) as EventListener);
       });
 
       eventSource.addEventListener('heartbeat', () => {

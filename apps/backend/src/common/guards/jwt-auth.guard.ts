@@ -13,7 +13,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     user: TUser | false | null,
   ): TUser {
     if (err || !user) {
-      throw err || new UnauthorizedException('Authentication required to access this resource.');
+      throw err || new UnauthorizedException('Tizimga kirish talab qilinadi.');
     }
     return user;
   }

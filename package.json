@@ -4,11 +4,15 @@
   "private": true,
   "description": "School Psychology Support System Monorepo",
   "scripts": {
+    "dev": "concurrently -k -p \"[{name}]\" -n \"backend,frontend\" -c \"blue.bold,magenta.bold\" \"pnpm --filter @psychology/backend start:dev\" \"pnpm --filter @psychology/frontend dev\"",
+    "dev:backend": "pnpm --filter @psychology/backend start:dev",
+    "dev:frontend": "pnpm --filter @psychology/frontend dev",
     "build": "pnpm --recursive run build",
     "lint": "pnpm --recursive run lint",
     "test": "pnpm --recursive run test"
   },
   "devDependencies": {
+    "concurrently": "^10.0.5",
     "typescript": "^5.8.2"
   },
   "packageManager": "pnpm@10.12.1"

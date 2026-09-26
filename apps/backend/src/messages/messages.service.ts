@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import {
   SenderType,
@@ -20,6 +21,8 @@ import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditService: AuditService,
@@ -112,54 +115,85 @@ export class MessagesService {
       ? ConversationStatus.ANSWERED
       : ConversationStatus.UNANSWERED;
 
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Acquire the row lock before appending; a concurrent close cannot be lost.
-      const open = await tx.conversation.updateMany({ where: { id: conversationId, status: { not: ConversationStatus.CLOSED } }, data: { status: nextStatus } });
-      if (!open.count) throw new BadRequestException('Murojaat yopilgan.');
-      const message = await tx.message.create({
-        data: {
-          conversationId,
-          senderId: sender.id,
-          senderType,
-          content: dto.content.trim(),
-          sourceKey,
-        },
-        select: {
-          id: true,
-          conversationId: true,
-          senderId: true,
-          senderType: true,
-          content: true,
-          createdAt: true,
-          readAt: true,
-        },
-      });
+    const executeWithRetry = async () => {
+      let attempts = 0;
+      while (attempts < 2) {
+        attempts++;
+        try {
+          return await this.prisma.$transaction(
+            async (tx) => {
+              // Acquire the row lock before appending; a concurrent close cannot be lost.
+              const open = await tx.conversation.updateMany({ where: { id: conversationId, status: { not: ConversationStatus.CLOSED } }, data: { status: nextStatus } });
+              if (!open.count) throw new BadRequestException('Murojaat yopilgan.');
+              const message = await tx.message.create({
+                data: {
+                  conversationId,
+                  senderId: sender.id,
+                  senderType,
+                  content: dto.content.trim(),
+                  sourceKey,
+                },
+                select: {
+                  id: true,
+                  conversationId: true,
+                  senderId: true,
+                  senderType: true,
+                  content: true,
+                  createdAt: true,
+                  readAt: true,
+                },
+              });
 
-      const updatedConversation = await tx.conversation.update({
-        where: { id: conversationId },
-        data: {
-          lastMessageAt: message.createdAt,
-          status: nextStatus,
-        },
-        select: {
-          status: true,
-          category: true,
-          updatedAt: true,
-        },
-      });
+              const updatedConversation = await tx.conversation.update({
+                where: { id: conversationId },
+                data: {
+                  lastMessageAt: message.createdAt,
+                  status: nextStatus,
+                },
+                select: {
+                  status: true,
+                  category: true,
+                  updatedAt: true,
+                },
+              });
 
-      if (isStaffReply && conversation.student.telegramId) {
-        await this.notificationsService.enqueueStudent(tx, conversation.student.telegramId, conversation.caseId);
-      } else if (!isStaffReply) {
-        await this.notificationsService.enqueueStaff(tx, conversation.recipientRoleId, conversation.caseId);
+              if (isStaffReply && conversation.student.telegramId) {
+                await this.notificationsService.enqueueStudent(tx, conversation.student.telegramId, conversation.caseId);
+              } else if (!isStaffReply) {
+                await this.notificationsService.enqueueStaff(tx, conversation.recipientRoleId, conversation.caseId);
+              }
+              return { message, updatedConversation };
+            },
+            {
+              maxWait: 10000,
+              timeout: 30000,
+            },
+          );
+        } catch (err: any) {
+          if (
+            attempts < 2 &&
+            (err?.message?.includes('Transaction not found') ||
+              err?.message?.includes('closed transaction') ||
+              err?.code === 'P2028' ||
+              err?.code === 'P2024')
+          ) {
+            this.logger.warn(`Prisma tranzaksiyasida vaqtinchalik xatolik (${err?.message}), qayta urinilmoqda...`);
+            await new Promise((r) => setTimeout(r, 500));
+            continue;
+          }
+          throw err;
+        }
       }
-      return { message, updatedConversation };
-    });
+      throw new Error('Transaction failed after retries');
+    };
+
+    const result = await executeWithRetry();
+    this.notificationsService.triggerDrain?.();
 
     const createdAtIso = result.message.createdAt.toISOString();
 
     // Audit logging (INVARIANT: never includes message content)
-    await this.auditService.record({
+    void this.auditService.record({
       actorId: sender.id,
       action: 'MESSAGE_SENT',
       targetType: 'CONVERSATION',

@@ -52,7 +52,110 @@ export class StudentBotController {
   }
 
   private resetSession(userId: number) {
-    this.sessions.set(userId, { state: StudentSessionState.IDLE });
+    const current = this.getSession(userId);
+    this.sessions.set(userId, {
+      state: StudentSessionState.IDLE,
+      botMessageIds: current.botMessageIds,
+      isMenuMinimized: current.isMenuMinimized,
+    });
+  }
+
+  private async safeAnswerCallback(
+    ctx: Context,
+    options?: Parameters<Context['answerCallbackQuery']>[0],
+  ) {
+    try {
+      await ctx.answerCallbackQuery(options);
+    } catch {
+      // Ignore expired query timeout errors
+    }
+  }
+
+  private async cleanupPreviousBotMessages(ctx: Context, session: StudentSessionData) {
+    if (!ctx.chat || !ctx.api?.deleteMessage) return;
+    const chatId = ctx.chat.id;
+    const ids = new Set<number>(session.botMessageIds || []);
+    if (ctx.callbackQuery?.message?.message_id) {
+      ids.add(ctx.callbackQuery.message.message_id);
+    }
+    session.botMessageIds = [];
+    if (ids.size === 0) return;
+    await Promise.all(
+      Array.from(ids).map((msgId) => ctx.api.deleteMessage(chatId, msgId).catch(() => {})),
+    );
+  }
+
+  private async removeReplyKeyboard(ctx: Context) {
+    if (!ctx.chat || !ctx.api) return;
+    try {
+      const sent = await ctx.reply('...', {
+        reply_markup: { remove_keyboard: true },
+      });
+      if (sent && typeof sent === 'object' && 'message_id' in sent) {
+        await ctx.api.deleteMessage(ctx.chat.id, (sent as any).message_id).catch(() => {});
+      }
+    } catch {
+      // Ignore if reply or deleteMessage fails
+    }
+  }
+
+  private async renderResponse(
+    ctx: Context,
+    text: string,
+    options?: {
+      reply_markup?: any;
+      parse_mode?: 'Markdown';
+      forceNew?: boolean;
+    },
+  ) {
+    if (!ctx.from) return;
+    const session = this.getSession(ctx.from.id);
+
+    // 1. Try in-place editing if triggered via callback query and not forced new
+    if (ctx.callbackQuery?.message && !options?.forceNew && ctx.editMessageText) {
+      try {
+        await ctx.editMessageText(text, {
+          parse_mode: options?.parse_mode,
+          reply_markup: options?.reply_markup,
+        });
+        session.botMessageIds = [ctx.callbackQuery.message.message_id];
+        return;
+      } catch (err: any) {
+        if (err?.description?.includes('message is not modified')) {
+          return;
+        }
+      }
+    }
+
+    // 2. Otherwise delete previous bot messages to keep chat clean
+    await this.cleanupPreviousBotMessages(ctx, session);
+
+    // 3. Send fresh message
+    try {
+      const replyCall =
+        options?.reply_markup !== undefined || options?.parse_mode !== undefined
+          ? ctx.reply(text, {
+              parse_mode: options?.parse_mode,
+              reply_markup: options?.reply_markup,
+            })
+          : ctx.reply(text);
+
+      const sent = await Promise.resolve(replyCall);
+      if (sent && typeof sent === 'object' && 'message_id' in sent) {
+        session.botMessageIds = [(sent as any).message_id];
+      }
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'error_code' in err &&
+        (err as { error_code: number }).error_code === 403
+      ) {
+        this.logger.warn(`O‘quvchi Bot: foydalanuvchi botni bloklagan (chatId: ${ctx.from.id})`);
+        return;
+      }
+      throw err;
+    }
   }
 
   private registerHandlers() {
@@ -60,7 +163,7 @@ export class StudentBotController {
     this.bot.command('start', async (ctx) => {
       if (!ctx.from) return;
       this.resetSession(ctx.from.id);
-      await this.sendMainMenu(ctx);
+      await this.sendMainMenu(ctx, true);
     });
 
     // Reply keyboard triggers
@@ -75,6 +178,12 @@ export class StudentBotController {
       await this.sendConversationsList(ctx, 1);
     });
 
+    this.bot.hears('❌ Bekor qilish', async (ctx) => {
+      if (!ctx.from) return;
+      this.resetSession(ctx.from.id);
+      await this.sendMainMenu(ctx, true);
+    });
+
     // Callback queries
     this.bot.on('callback_query:data', async (ctx) => {
       const data = ctx.callbackQuery.data;
@@ -82,22 +191,49 @@ export class StudentBotController {
       if (!userId) return;
 
       if (data === 'student:noop') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         return;
       }
 
       if (data === 'student:home') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         this.resetSession(userId);
-        await this.sendMainMenu(ctx);
+        await this.sendMainMenu(ctx, true);
         return;
       }
 
       if (data === 'student:cancel') {
-        await ctx.answerCallbackQuery({ text: 'Bekor qilindi' });
+        await this.safeAnswerCallback(ctx, { text: 'Bekor qilindi' });
         this.resetSession(userId);
-        await ctx.reply('Bekor qilindi.');
-        await this.sendMainMenu(ctx);
+        await this.sendMainMenu(ctx, true);
+        return;
+      }
+
+      if (data === 'student:action:compose') {
+        await this.safeAnswerCallback(ctx);
+        await this.sendRecipients(ctx);
+        return;
+      }
+
+      if (data === 'student:menu:minimize') {
+        await this.safeAnswerCallback(ctx, { text: 'Menyu yig‘ildi' });
+        this.setSession(userId, { isMenuMinimized: true });
+        await this.renderResponse(
+          ctx,
+          'Assalomu alaykum! Maktab xodimlariga shu yerda yozishingiz mumkin. (Menyu yig‘ilgan)',
+          { reply_markup: StudentKeyboards.inlineMainMenu(true) },
+        );
+        return;
+      }
+
+      if (data === 'student:menu:expand') {
+        await this.safeAnswerCallback(ctx, { text: 'Menyu ochildi' });
+        this.setSession(userId, { isMenuMinimized: false });
+        await this.renderResponse(
+          ctx,
+          'Assalomu alaykum! Maktab xodimlariga shu yerda yozishingiz mumkin.',
+          { reply_markup: StudentKeyboards.inlineMainMenu(false) },
+        );
         return;
       }
 
@@ -105,66 +241,68 @@ export class StudentBotController {
         const roleId = data.substring(10);
         const roles = await this.usersService.listRoles(true);
         if (!roles.some(role => role.id === roleId)) {
-          await ctx.answerCallbackQuery({ text: 'Qabul qiluvchi mavjud emas.' });
+          await this.safeAnswerCallback(ctx, { text: 'Qabul qiluvchi mavjud emas.' });
           return;
         }
         this.setSession(userId, { state: StudentSessionState.AWAITING_CATEGORY, recipientRoleId: roleId });
-        await ctx.answerCallbackQuery();
-        await ctx.reply('Mavzuni tanlang:', { reply_markup: StudentKeyboards.categories() });
+        await this.safeAnswerCallback(ctx);
+        // Category options appear, recipient list disappears
+        await this.renderResponse(ctx, 'Mavzuni tanlang:', { reply_markup: StudentKeyboards.categories() });
         return;
       }
 
       if (data.startsWith('cat:')) {
         const category = data.substring(4) as ConversationCategory;
         if (!Object.values(ConversationCategory).includes(category) || !this.getSession(userId).recipientRoleId) {
-          await ctx.answerCallbackQuery({ text: 'Avval qabul qiluvchini tanlang.' });
+          await this.safeAnswerCallback(ctx, { text: 'Avval qabul qiluvchini tanlang.' });
           return;
         }
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         this.setSession(userId, {
           state: StudentSessionState.AWAITING_INITIAL_MESSAGE,
           selectedCategory: category,
         });
 
         const label = CATEGORY_LABELS[category] || category;
-        await ctx.reply(
-          `Mavzu: ${label}
-Xabaringizni yozing.`,
-          { parse_mode: 'Markdown' },
+        // Large category menu disappears, minimized to a single cancel button
+        await this.renderResponse(
+          ctx,
+          `Mavzu: *${label}*\n\n✍️ Xabaringizni yozing.`,
+          { parse_mode: 'Markdown', reply_markup: StudentKeyboards.cancelOnly() },
         );
         return;
       }
 
       if (data === 'student:list') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendConversationsList(ctx, 1);
         return;
       }
 
       if (data.startsWith('student:page:')) {
         const page = parseInt(data.substring(13), 10) || 1;
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendConversationsList(ctx, page);
         return;
       }
 
       if (data.startsWith('student:history:')) {
         const [, , id = '', pageText = '1'] = data.split(':');
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendConversationDetail(ctx, id, Math.max(1, parseInt(pageText, 10) || 1));
         return;
       }
 
       if (data.startsWith('student:case:')) {
         const conversationId = data.substring(13);
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendConversationDetail(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('student:reply:')) {
         const conversationId = data.substring(14);
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.handleStartReply(ctx, conversationId);
         return;
       }
@@ -214,17 +352,33 @@ Xabaringizni yozing.`,
     if (!ctx.from) return;
     this.resetSession(ctx.from.id);
     const roles = await this.usersService.listRoles(true);
-    if (!roles.length) { await ctx.reply('Hozircha qabul qiluvchi yo‘q. Keyinroq urinib ko‘ring.'); return; }
+    if (!roles.length) {
+      await this.renderResponse(ctx, 'Hozircha qabul qiluvchi yo‘q. Keyinroq urinib ko‘ring.', {
+        reply_markup: StudentKeyboards.mainMenu(),
+        forceNew: true,
+      });
+      return;
+    }
     const keyboard = new InlineKeyboard();
     for (const role of roles) keyboard.text(role.name, `recipient:${role.id}`).row();
-    keyboard.text('Bekor qilish', 'student:cancel');
-    await ctx.reply('Kimga yozmoqchisiz?', { reply_markup: keyboard });
+    keyboard.text('❌ Bekor qilish', 'student:cancel');
+
+    await this.removeReplyKeyboard(ctx);
+    await this.renderResponse(ctx, 'Kimga yozmoqchisiz?', {
+      reply_markup: keyboard,
+      forceNew: true,
+    });
   }
 
-  private async sendMainMenu(ctx: Context) {
-    await ctx.reply(
+  private async sendMainMenu(ctx: Context, forceNew = false) {
+    if (!ctx.from) return;
+    await this.renderResponse(
+      ctx,
       'Assalomu alaykum! Maktab xodimlariga shu yerda yozishingiz mumkin.',
-      { reply_markup: StudentKeyboards.mainMenu() },
+      {
+        reply_markup: StudentKeyboards.mainMenu(),
+        forceNew,
+      },
     );
   }
 
@@ -238,27 +392,32 @@ Xabaringizni yozing.`,
       { id: studentUser.id, role: UserRole.STUDENT, telegramId },
     );
 
+    await this.removeReplyKeyboard(ctx);
+
     if (result.meta.total === 0) {
-      await ctx.reply(
-        'Hali xabar yo‘q. «📝 Xabar yozish»ni bosing.',
-        { reply_markup: StudentKeyboards.mainMenu() },
-      );
+      const keyboard = new InlineKeyboard().text('🏠 Bosh menyu', 'student:home');
+      await this.renderResponse(ctx, 'Hali xabar yo‘q.', {
+        reply_markup: keyboard,
+        forceNew: true,
+      });
       return;
     }
 
     const messageText = `📨 *Mening xabarlarim* (Sahifa ${result.meta.page}/${result.meta.totalPages})\n\nMurojaatni tanlang:`;
 
-    await ctx.reply(messageText, {
+    await this.renderResponse(ctx, messageText, {
       parse_mode: 'Markdown',
       reply_markup: StudentKeyboards.conversationList(
         result.data.map((c) => ({
           id: c.id,
           caseId: c.caseId,
           status: c.status,
+          category: c.category,
         })),
         result.meta.page,
         result.meta.totalPages,
       ),
+      forceNew: true,
     });
   }
 
@@ -277,33 +436,91 @@ Xabaringizni yozing.`,
 
     const messagesResult = await this.messagesService.getMessages(conversationId, page, 5);
 
+    const catEmoji =
+      conv.category === ConversationCategory.ACADEMIC
+        ? '📚'
+        : conv.category === ConversationCategory.PERSONAL
+        ? '💙'
+        : conv.category === ConversationCategory.SOCIAL
+        ? '👥'
+        : conv.category === ConversationCategory.URGENT
+        ? '🚨'
+        : '💬';
+
     const categoryLabel = CATEGORY_LABELS[conv.category] || conv.category;
-    let statusLabel = '⏳ Javob kutilmoqda';
+    let statusBadge = '⏳ Javob kutilmoqda';
     if (conv.status === ConversationStatus.ANSWERED) {
-      statusLabel = '💬 Javob keldi';
+      statusBadge = '💬 Javob berilgan';
     } else if (conv.status === ConversationStatus.CLOSED) {
-      statusLabel = '🔒 Yopilgan';
+      statusBadge = '🔒 Yakunlangan';
     }
 
-    let text = `Murojaat ${conv.caseId}\nHolat: ${statusLabel}\nMavzu: ${categoryLabel}\n────────────────────────\n`;
+    let text = `📬 *Murojaatingiz*\n\n`;
+    text += `📂 *Mavzu:* ${catEmoji} ${categoryLabel}\n`;
+    text += `📊 *Holati:* ${statusBadge}\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-    for (const msg of messagesResult.data) {
-      const senderHeader = msg.senderType === SenderType.STUDENT ? '🧑 Siz:' : '💬 Xodim:';
-      text += `\n${senderHeader}\n${msg.content}\n`;
+    if (messagesResult.data.length === 0) {
+      text += `_Xabarlar mavjud emas_\n`;
+    } else {
+      for (const msg of messagesResult.data) {
+        const isStudent = msg.senderType === SenderType.STUDENT;
+        const senderIcon = isStudent ? '👤' : '👨‍💼';
+        const senderName = isStudent ? 'Siz' : 'Mutaxassis';
+
+        let timeStr = '';
+        if (msg.createdAt) {
+          try {
+            timeStr = new Intl.DateTimeFormat('uz-UZ', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Asia/Tashkent',
+            }).format(new Date(msg.createdAt));
+          } catch {}
+        }
+        const timeBadge = timeStr ? ` • _${timeStr}_` : '';
+        const escapedContent = (msg.content || '').replace(/([*_`\[])/g, '\\$1');
+
+        text += `${senderIcon} *${senderName}*${timeBadge}\n`;
+        text += `${escapedContent}\n\n`;
+      }
     }
 
-    text += '────────────────────────';
+    text += `━━━━━━━━━━━━━━━━━━━━`;
 
     const isClosed = conv.status === ConversationStatus.CLOSED;
+    const markup = StudentKeyboards.conversationDetail(
+      conv.id,
+      isClosed,
+      messagesResult.meta.page,
+      messagesResult.meta.totalPages,
+    );
 
     const chunks = splitTelegramText(text);
-    for (const [index, chunk] of chunks.entries()) {
-      await ctx.reply(
-        chunk,
-        index === chunks.length - 1
-          ? { reply_markup: StudentKeyboards.conversationDetail(conv.id, isClosed, messagesResult.meta.page, messagesResult.meta.totalPages) }
-          : undefined,
-      );
+    if (chunks.length <= 1) {
+      await this.renderResponse(ctx, text, {
+        parse_mode: 'Markdown',
+        reply_markup: markup,
+      });
+    } else {
+      const session = this.getSession(ctx.from.id);
+      await this.cleanupPreviousBotMessages(ctx, session);
+      const sentIds: number[] = [];
+      for (const [index, chunk] of chunks.entries()) {
+        const sent = await Promise.resolve(
+          ctx.reply(
+            chunk,
+            {
+              parse_mode: 'Markdown',
+              reply_markup: index === chunks.length - 1 ? markup : undefined,
+            },
+          ),
+        );
+        if (sent && typeof sent === 'object' && 'message_id' in sent) {
+          sentIds.push((sent as any).message_id);
+        }
+      }
+      session.botMessageIds = sentIds;
     }
   }
 
@@ -319,7 +536,9 @@ Xabaringizni yozing.`,
     }
 
     if (conv.status === ConversationStatus.CLOSED) {
-      await ctx.reply('Murojaat yopilgan. Yangi murojaat yuborishingiz mumkin.');
+      await this.renderResponse(ctx, 'Murojaat yopilgan. Yangi murojaat yuborishingiz mumkin.', {
+        reply_markup: StudentKeyboards.inlineMainMenu(),
+      });
       return;
     }
 
@@ -329,10 +548,10 @@ Xabaringizni yozing.`,
       activeCaseId: conv.caseId,
     });
 
-    await ctx.reply(
-      `${conv.caseId}: xabaringizni yozing.`,
-      { parse_mode: 'Markdown' },
-    );
+    await this.renderResponse(ctx, `${conv.caseId}: xabaringizni yozing.`, {
+      parse_mode: 'Markdown',
+      reply_markup: StudentKeyboards.cancelOnly(),
+    });
   }
 
   private async handleCreateConversation(
@@ -343,29 +562,54 @@ Xabaringizni yozing.`,
     if (!ctx.from) return;
     const telegramId = String(ctx.from.id);
     const category = session.selectedCategory || ConversationCategory.GENERAL;
+    const recipientRoleId = session.recipientRoleId;
+    const updateId = ctx.update?.update_id;
 
-    try {
-      const conv = await this.conversationsService.createConversation({
-        studentTelegramId: telegramId,
-        recipientRoleId: session.recipientRoleId,
-        category,
-        initialMessage,
-      }, undefined, ctx.update?.update_id === undefined ? undefined : `student:${ctx.update.update_id}`);
+    this.resetSession(ctx.from.id);
 
-      this.resetSession(ctx.from.id);
+    // Optimistically send confirmation immediately so user experiences zero latency
+    await this.renderResponse(
+      ctx,
+      '✅ Xabaringiz yuborildi.',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: StudentKeyboards.mainMenu(),
+        forceNew: true,
+      },
+    );
 
-
-      await ctx.reply(
-        `✅ ${conv.caseId}: xabaringiz yuborildi.`,
+    // Ensure conversation is persisted and delivered to server and admin/staff
+    void this.conversationsService
+      .createConversation(
         {
-          parse_mode: 'Markdown',
-          reply_markup: StudentKeyboards.mainMenu(),
+          studentTelegramId: telegramId,
+          recipientRoleId,
+          category,
+          initialMessage,
         },
-      );
-    } catch {
-      this.logger.error('Bot amalini bajarib bo‘lmadi.');
-      await ctx.reply('Xabar yuborilmadi. Qayta urinib ko‘ring.');
-    }
+        undefined,
+        updateId === undefined ? undefined : `student:${updateId}`,
+      )
+      .then(async (conv) => {
+        if (conv?.caseId && ctx.reply) {
+          await Promise.resolve(
+            ctx.reply(`✅ ${conv.caseId}: qabul qilindi.`, {
+              parse_mode: 'Markdown',
+              reply_markup: StudentKeyboards.mainMenu(),
+            }),
+          ).catch(() => {});
+        }
+      })
+      .catch(async (error) => {
+        this.logger.error('Bot amalini bajarib bo‘lmadi.', error instanceof Error ? error.stack : error);
+        if (ctx.reply) {
+          await Promise.resolve(
+            ctx.reply('❌ Xatolik yuz berdi: xabaringiz serverga yetkazilmadi. Qayta urinib ko‘ring.', {
+              reply_markup: StudentKeyboards.mainMenu(),
+            }),
+          ).catch(() => {});
+        }
+      });
   }
 
   private async handleSendFollowup(
@@ -376,28 +620,40 @@ Xabaringizni yozing.`,
     if (!ctx.from || !session.activeConversationId) return;
     const telegramId = String(ctx.from.id);
     const studentUser = await this.usersService.getOrCreateStudent(telegramId);
+    const caseId = session.activeCaseId || '';
+    const conversationId = session.activeConversationId;
+    const updateId = ctx.update?.update_id;
 
-    try {
-      await this.messagesService.addMessage(
-        session.activeConversationId,
+    this.resetSession(ctx.from.id);
+
+    // Optimistically send confirmation immediately
+    await this.renderResponse(
+      ctx,
+      `✅ ${caseId ? `${caseId}: ` : ''}xabaringiz yuborildi.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: StudentKeyboards.mainMenu(),
+        forceNew: true,
+      },
+    );
+
+    // Concurrently ensure message is saved to server and staff/admin is notified
+    void this.messagesService
+      .addMessage(
+        conversationId,
         { content },
         { id: studentUser.id, role: UserRole.STUDENT, telegramId },
-        ctx.update?.update_id === undefined ? undefined : `student:${ctx.update.update_id}`,
-      );
-
-      const caseId = session.activeCaseId || '';
-      this.resetSession(ctx.from.id);
-
-      await ctx.reply(
-        `✅ ${caseId}: xabaringiz yuborildi.`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: StudentKeyboards.mainMenu(),
-        },
-      );
-    } catch {
-      this.logger.error('Bot amalini bajarib bo‘lmadi.');
-      await ctx.reply('Xabar yuborilmadi. Qayta urinib ko‘ring.');
-    }
+        updateId === undefined ? undefined : `student:${updateId}`,
+      )
+      .catch(async (error) => {
+        this.logger.error('Follow-up xabarni yuborishda xato.', error instanceof Error ? error.stack : error);
+        if (ctx.reply) {
+          await Promise.resolve(
+            ctx.reply('❌ Xatolik yuz berdi: xabaringiz serverga yetkazilmadi. Qayta urinib ko‘ring.', {
+              reply_markup: StudentKeyboards.mainMenu(),
+            }),
+          ).catch(() => {});
+        }
+      });
   }
 }

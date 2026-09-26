@@ -2,12 +2,32 @@ import { Injectable } from '@nestjs/common';
 import { CurrentUser, DashboardStatistics, UserRole } from '@psychology/types';
 import { PrismaService } from '../database/prisma.service';
 
+interface CachedStatistics {
+  data: DashboardStatistics;
+  expiresAt: number;
+}
+
 @Injectable()
 export class StatisticsService {
+  private readonly statsCache = new Map<string, CachedStatistics>();
+
   constructor(private readonly prisma: PrismaService) {}
+
+  invalidateCache() {
+    this.statsCache.clear();
+  }
+
   async getDashboardStatistics(actor?: CurrentUser): Promise<DashboardStatistics> {
     const admin = actor?.role === UserRole.ADMIN;
     const roleId = actor?.staffRoleId || '__unassigned__';
+    const cacheKey = admin ? 'admin' : `role:${roleId}`;
+    const now = Date.now();
+
+    const cached = this.statsCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+
     const [row] = await this.prisma.$queryRaw<DashboardStatistics[]>`
       WITH scoped AS (
         SELECT * FROM conversations WHERE (${admin} OR "recipientRoleId" = ${roleId})
@@ -28,6 +48,12 @@ export class StatisticsService {
       FROM scoped
     `;
     if (!row) throw new Error('Statistika hisoblanmadi.');
+
+    this.statsCache.set(cacheKey, {
+      data: row,
+      expiresAt: now + 30_000,
+    });
+
     return row;
   }
 }

@@ -53,7 +53,7 @@ export default function DashboardLayout({
       <div className="min-h-screen grid place-items-center bg-base" role="status">
         <div className="flex items-center gap-2 text-sm text-text-muted">
           <Loader2 className="h-5 w-5 animate-spin text-accent-primary" />
-          Verifying secure session…
+          Xavfsiz seans tekshirilmoqda…
         </div>
       </div>
     );
@@ -116,7 +116,7 @@ export default function DashboardLayout({
               tabIndex={-1}
               role="dialog"
               aria-modal="true"
-              aria-label="Dashboard navigation"
+              aria-label="Boshqaruv paneli menyusi"
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}

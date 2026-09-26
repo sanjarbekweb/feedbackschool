@@ -57,7 +57,96 @@ export class StaffBotController {
   }
 
   private resetSession(userId: number) {
-    this.sessions.set(userId, { state: StaffSessionState.IDLE });
+    const current = this.getSession(userId);
+    this.sessions.set(userId, {
+      state: StaffSessionState.IDLE,
+      botMessageIds: current.botMessageIds,
+      isMenuMinimized: current.isMenuMinimized,
+    });
+  }
+
+  private async safeAnswerCallback(
+    ctx: Context,
+    options?: Parameters<Context['answerCallbackQuery']>[0],
+  ) {
+    try {
+      await ctx.answerCallbackQuery(options);
+    } catch {
+      // Ignore expired query timeout errors
+    }
+  }
+
+  private async cleanupPreviousBotMessages(ctx: Context, session: StaffSessionData) {
+    if (!ctx.chat || !ctx.api?.deleteMessage) return;
+    const chatId = ctx.chat.id;
+    const ids = new Set<number>(session.botMessageIds || []);
+    if (ctx.callbackQuery?.message?.message_id) {
+      ids.add(ctx.callbackQuery.message.message_id);
+    }
+    session.botMessageIds = [];
+    if (ids.size === 0) return;
+    await Promise.all(
+      Array.from(ids).map((msgId) => ctx.api.deleteMessage(chatId, msgId).catch(() => {})),
+    );
+  }
+
+  private async renderResponse(
+    ctx: Context,
+    text: string,
+    options?: {
+      reply_markup?: any;
+      parse_mode?: 'Markdown';
+      forceNew?: boolean;
+    },
+  ) {
+    if (!ctx.from) return;
+    const session = this.getSession(ctx.from.id);
+
+    // 1. Try in-place editing if triggered via callback query and not forced new
+    if (ctx.callbackQuery?.message && !options?.forceNew && ctx.editMessageText) {
+      try {
+        await ctx.editMessageText(text, {
+          parse_mode: options?.parse_mode,
+          reply_markup: options?.reply_markup,
+        });
+        session.botMessageIds = [ctx.callbackQuery.message.message_id];
+        return;
+      } catch (err: any) {
+        if (err?.description?.includes('message is not modified')) {
+          return;
+        }
+      }
+    }
+
+    // 2. Otherwise delete previous bot messages
+    await this.cleanupPreviousBotMessages(ctx, session);
+
+    // 3. Send fresh message
+    try {
+      const replyCall =
+        options?.reply_markup !== undefined || options?.parse_mode !== undefined
+          ? ctx.reply(text, {
+              parse_mode: options?.parse_mode,
+              reply_markup: options?.reply_markup,
+            })
+          : ctx.reply(text);
+
+      const sent = await Promise.resolve(replyCall);
+      if (sent && typeof sent === 'object' && 'message_id' in sent) {
+        session.botMessageIds = [(sent as any).message_id];
+      }
+    } catch (err: unknown) {
+      if (
+        typeof err === 'object' &&
+        err !== null &&
+        'error_code' in err &&
+        (err as { error_code: number }).error_code === 403
+      ) {
+        this.logger.warn(`Xodim Bot: foydalanuvchi botni bloklagan (chatId: ${ctx.from.id})`);
+        return;
+      }
+      throw err;
+    }
   }
 
   private formatRelativeTime(date: Date): string {
@@ -80,7 +169,7 @@ export class StaffBotController {
     if (!user || !user.isActive || (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)) {
       this.logger.warn('Unauthorized staff bot access attempt.');
       if (ctx.callbackQuery) {
-        await ctx.answerCallbackQuery({
+        await this.safeAnswerCallback(ctx, {
           text: '⛔ Kirish uchun ruxsat kerak.',
           show_alert: true,
         });
@@ -117,7 +206,7 @@ export class StaffBotController {
     this.bot.command('start', async (ctx) => {
       if (!ctx.from) return;
       this.resetSession(ctx.from.id);
-      await this.sendMainMenu(ctx);
+      await this.sendMainMenu(ctx, true);
     });
 
     // 3. Callback Queries
@@ -127,20 +216,55 @@ export class StaffBotController {
       if (!userId) return;
 
       if (data === 'staff:noop') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         return;
       }
 
       if (data === 'staff:home') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         this.resetSession(userId);
         await this.sendMainMenu(ctx);
         return;
       }
 
+      if (data === 'staff:menu:minimize') {
+        await this.safeAnswerCallback(ctx, { text: 'Menyu yig‘ildi' });
+        this.setSession(userId, { isMenuMinimized: true });
+        await this.renderResponse(
+          ctx,
+          '🏥 *Xodimlar paneli* (Yig‘ilgan)\n\nMenyuni ochish uchun tugmani bosing.',
+          { parse_mode: 'Markdown', reply_markup: StaffKeyboards.mainMenu(true) },
+        );
+        return;
+      }
+
+      if (data === 'staff:menu:expand') {
+        await this.safeAnswerCallback(ctx, { text: 'Menyu ochildi' });
+        this.setSession(userId, { isMenuMinimized: false });
+        await this.renderResponse(
+          ctx,
+          '🏥 *Xodimlar paneli*\n\nO‘quvchilar murojaatlarini boshqarish, statistikani ko‘rish va javob berish.',
+          { parse_mode: 'Markdown', reply_markup: StaffKeyboards.mainMenu(false) },
+        );
+        return;
+      }
+
+      if (data === 'staff:cancel') {
+        await this.safeAnswerCallback(ctx, { text: 'Bekor qilindi' });
+        const session = this.getSession(userId);
+        const activeId = session.activeConversationId;
+        this.resetSession(userId);
+        if (activeId) {
+          await this.sendCaseDetail(ctx, activeId);
+        } else {
+          await this.sendMainMenu(ctx);
+        }
+        return;
+      }
+
       if (data.startsWith('staff:filter:')) {
         const filter = data.substring(13);
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendCaseList(ctx, filter, 1);
         return;
       }
@@ -149,55 +273,55 @@ export class StaffBotController {
         const parts = data.split(':');
         const filter = parts[2] || 'ALL';
         const page = parseInt(parts[3] || '1', 10) || 1;
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendCaseList(ctx, filter, page);
         return;
       }
 
       if (data.startsWith('staff:history:')) {
         const [, , id = '', pageText = '1'] = data.split(':');
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendCaseDetail(ctx, id, Math.max(1, parseInt(pageText, 10) || 1));
         return;
       }
 
       if (data.startsWith('staff:case:')) {
         const conversationId = data.substring(11);
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendCaseDetail(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:respond:')) {
         const conversationId = data.substring(21);
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.handleStartReply(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:mark_answered:')) {
         const conversationId = data.substring(27);
-        await ctx.answerCallbackQuery({ text: 'Javob berilgan deb belgilandi' });
+        await this.safeAnswerCallback(ctx, { text: 'Javob berilgan deb belgilandi' });
         await this.handleMarkAnswered(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:close:')) {
         const conversationId = data.substring(19);
-        await ctx.answerCallbackQuery({ text: 'Murojaat yopildi' });
+        await this.safeAnswerCallback(ctx, { text: 'Murojaat yopildi' });
         await this.handleCloseCase(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:students:')) {
         const page = parseInt(data.substring(15), 10) || 1;
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendStudentsList(ctx, page);
         return;
       }
 
       if (data === 'staff:stats') {
-        await ctx.answerCallbackQuery();
+        await this.safeAnswerCallback(ctx);
         await this.sendStats(ctx);
         return;
       }
@@ -227,12 +351,18 @@ export class StaffBotController {
     });
   }
 
-  private async sendMainMenu(ctx: Context) {
-    await ctx.reply(
-      '🏥 *Xodimlar paneli*\n\nManage student cases, view statistics, and review responses.',
+  private async sendMainMenu(ctx: Context, forceNew = false) {
+    if (!ctx.from) return;
+    const session = this.getSession(ctx.from.id);
+    await this.renderResponse(
+      ctx,
+      session.isMenuMinimized
+        ? '🏥 *Xodimlar paneli* (Yig‘ilgan)\n\nMenyuni ochish uchun tugmani bosing.'
+        : '🏥 *Xodimlar paneli*\n\nO‘quvchilar murojaatlarini boshqarish, statistikani ko‘rish va javob berish.',
       {
         parse_mode: 'Markdown',
-        reply_markup: StaffKeyboards.mainMenu(),
+        reply_markup: StaffKeyboards.mainMenu(session.isMenuMinimized),
+        forceNew,
       },
     );
   }
@@ -254,7 +384,8 @@ export class StaffBotController {
     if (filter === 'ANSWERED') title = '✅ Javob berilganlar';
 
     if (result.meta.total === 0) {
-      await ctx.reply(`${title}\n\nMurojaat yo‘q.`, {
+      await this.renderResponse(ctx, `*${title}*\n\nMurojaat yo‘q.`, {
+        parse_mode: 'Markdown',
         reply_markup: StaffKeyboards.caseList([], filter, 1, 1),
       });
       return;
@@ -268,7 +399,7 @@ export class StaffBotController {
       messageText += `• *${c.caseId}* | ${cat} | ${relTime}\n`;
     }
 
-    await ctx.reply(messageText, {
+    await this.renderResponse(ctx, messageText, {
       parse_mode: 'Markdown',
       reply_markup: StaffKeyboards.caseList(
         result.data.map((c) => ({ id: c.id, caseId: c.caseId })),
@@ -304,22 +435,37 @@ export class StaffBotController {
     text += '────────────────────────';
 
     const isClosed = conv.status === ConversationStatus.CLOSED;
+    const markup = StaffKeyboards.caseDetail(
+      conv.id,
+      isClosed,
+      messagesResult.meta.page,
+      messagesResult.meta.totalPages,
+    );
 
     const chunks = splitTelegramText(text);
-    for (const [index, chunk] of chunks.entries()) {
-      await ctx.reply(
-        chunk,
-        index === chunks.length - 1
-          ? { reply_markup: StaffKeyboards.caseDetail(conv.id, isClosed, messagesResult.meta.page, messagesResult.meta.totalPages) }
-          : undefined,
-      );
+    if (chunks.length <= 1) {
+      await this.renderResponse(ctx, text, { reply_markup: markup });
+    } else {
+      const session = this.getSession(ctx.from!.id);
+      await this.cleanupPreviousBotMessages(ctx, session);
+      const sentIds: number[] = [];
+      for (const [index, chunk] of chunks.entries()) {
+        const sent = await ctx.reply(
+          chunk,
+          index === chunks.length - 1 ? { reply_markup: markup } : undefined,
+        );
+        sentIds.push(sent.message_id);
+      }
+      session.botMessageIds = sentIds;
     }
   }
 
   private async handleStartReply(ctx: Context, conversationId: string) {
     const conv = await this.conversationsService.findOne(conversationId, this.requireStaffUser(ctx));
     if (conv.status === ConversationStatus.CLOSED) {
-      await ctx.reply('Murojaat yopilgan.');
+      await this.renderResponse(ctx, 'Murojaat yopilgan.', {
+        reply_markup: StaffKeyboards.mainMenu(),
+      });
       return;
     }
 
@@ -329,9 +475,14 @@ export class StaffBotController {
       activeCaseId: conv.caseId,
     });
 
-    await ctx.reply(
-      `${conv.caseId}: javobingizni yozing.`,
-      { parse_mode: 'Markdown' },
+    // Button menu disappears / minimizes to a single cancel button
+    await this.renderResponse(
+      ctx,
+      `*${conv.caseId}*: javobingizni yozing.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: StaffKeyboards.cancelOnly(),
+      },
     );
   }
 
@@ -343,28 +494,39 @@ export class StaffBotController {
     if (!session.activeConversationId) return;
     const staffUser = this.requireStaffUser(ctx);
 
-    try {
-      await this.messagesService.addMessage(
-        session.activeConversationId,
+    const caseId = session.activeCaseId || '';
+    const conversationId = session.activeConversationId;
+    const updateId = ctx.update?.update_id;
+
+    this.resetSession(ctx.from!.id);
+
+    // Optimistically send confirmation immediately
+    await this.renderResponse(
+      ctx,
+      `✅ ${caseId}: javob yuborildi.`,
+      {
+        parse_mode: 'Markdown',
+        reply_markup: StaffKeyboards.mainMenu(),
+        forceNew: true,
+      },
+    );
+
+    // Concurrently ensure message is saved to server and delivered to student
+    void this.messagesService
+      .addMessage(
+        conversationId,
         { content },
         staffUser,
-        ctx.update?.update_id === undefined ? undefined : `staff:${ctx.update.update_id}`,
-      );
-
-      const caseId = session.activeCaseId || '';
-      this.resetSession(ctx.from!.id);
-
-      await ctx.reply(
-        `✅ ${caseId}: javob yuborildi.`,
-        {
-          parse_mode: 'Markdown',
-          reply_markup: StaffKeyboards.mainMenu(),
-        },
-      );
-    } catch {
-      this.logger.error('Bot amalini bajarib bo‘lmadi.');
-      await ctx.reply('Javob yuborilmadi. Qayta urinib ko‘ring.');
-    }
+        updateId === undefined ? undefined : `staff:${updateId}`,
+      )
+      .catch(async (error) => {
+        this.logger.error('Xodim javobini saqlashda xato.', error instanceof Error ? error.stack : error);
+        await ctx
+          .reply('❌ Xatolik yuz berdi: javobingiz serverga yetkazilmadi. Qayta urinib ko‘ring.', {
+            reply_markup: StaffKeyboards.mainMenu(),
+          })
+          .catch(() => {});
+      });
   }
 
   private async handleMarkAnswered(ctx: Context, conversationId: string) {
@@ -391,7 +553,7 @@ export class StaffBotController {
     const result = await this.usersService.listStudents(page, 5, this.requireStaffUser(ctx));
 
     if (result.meta.total === 0) {
-      await ctx.reply('Hali o‘quvchi yo‘q.', {
+      await this.renderResponse(ctx, 'Hali o‘quvchi yo‘q.', {
         reply_markup: StaffKeyboards.studentsList(1, 1),
       });
       return;
@@ -405,7 +567,7 @@ export class StaffBotController {
       text += `• O‘quvchi #${code} — ${casesCount} ta murojaat\n`;
     }
 
-    await ctx.reply(text, {
+    await this.renderResponse(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: StaffKeyboards.studentsList(result.meta.page, result.meta.totalPages),
     });
@@ -423,7 +585,7 @@ export class StaffBotController {
       `• So‘nggi 24 soatda: *${stats.recentActivityCount}*\n` +
       `• O‘rtacha javob vaqti: *${stats.averageResponseTimeMinutes ?? '—'} daqiqa*`;
 
-    await ctx.reply(text, {
+    await this.renderResponse(ctx, text, {
       parse_mode: 'Markdown',
       reply_markup: StaffKeyboards.statsView(),
     });

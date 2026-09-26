@@ -18,18 +18,35 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
   registerStudentNotifier(notifier: StudentNotifier) { this.studentNotifier = notifier; }
 
   async enqueueStaff(tx: Prisma.TransactionClient, roleId: string, caseId: string) {
-    const staff = await tx.user.findMany({ where: { staffRoleId: roleId, role: 'STAFF', isActive: true, telegramId: { not: null } }, select: { id: true } });
-    if (staff.length) await tx.notificationJob.createMany({ data: staff.map(user => ({ kind: 'STAFF', target: user.id, caseId })) });
+    let staff = await tx.user.findMany({
+      where: { staffRoleId: roleId, role: { in: ['STAFF', 'ADMIN'] }, isActive: true, telegramId: { not: null } },
+      select: { id: true },
+    });
+    if (!staff.length) {
+      staff = await tx.user.findMany({
+        where: { role: 'ADMIN', isActive: true, telegramId: { not: null } },
+        select: { id: true },
+      });
+    }
+    if (staff.length) {
+      await tx.notificationJob.createMany({ data: staff.map((user) => ({ kind: 'STAFF', target: user.id, caseId })) });
+    }
   }
   async enqueueStudent(tx: Prisma.TransactionClient, telegramId: string, caseId: string) {
     await tx.notificationJob.create({ data: { kind: 'STUDENT', target: telegramId, caseId } });
   }
-  onModuleInit() {
-    this.timer = setInterval(() => {
-      if (!this.running) this.running = this.drain().catch(() => {
+  triggerDrain() {
+    if (!this.running) {
+      this.running = this.drain().catch(() => {
         this.logger.error('Bildirishnoma navbatini qayta ishlashda xato.');
       }).finally(() => { this.running = undefined; });
-    }, 1000);
+    }
+  }
+
+  onModuleInit() {
+    this.timer = setInterval(() => {
+      this.triggerDrain();
+    }, 20000);
     this.timer.unref();
   }
   async onModuleDestroy() {
@@ -53,7 +70,11 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       if (job.kind === 'STAFF') {
         const user = await this.prisma.user.findUnique({ where: { id: job.target } });
         const conversation = await this.prisma.conversation.findUnique({ where: { caseId: job.caseId }, select: { recipientRoleId: true } });
-        if (user?.isActive && user.role === 'STAFF' && user.telegramId && user.staffRoleId === conversation?.recipientRoleId) {
+        if (
+          user?.isActive &&
+          user.telegramId &&
+          (user.role === 'ADMIN' || (user.role === 'STAFF' && user.staffRoleId === conversation?.recipientRoleId))
+        ) {
           await this.staffGroupNotifier!(`🔔 Yangi xabar: ${job.caseId}\nMurojaatni bot yoki panelda oching.`, user.telegramId);
         }
       } else {
@@ -61,7 +82,19 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
       }
       await this.prisma.notificationJob.delete({ where: { id: job.id } });
     } catch (error: unknown) {
-      const retry = (error as { parameters?: { retry_after?: number } }).parameters?.retry_after;
+      const err = error as {
+        error_code?: number;
+        description?: string;
+        message?: string;
+        parameters?: { retry_after?: number };
+      };
+      const desc = (err?.description || err?.message || '').toLowerCase();
+      if (err?.error_code === 403 || desc.includes('bot was blocked by the user') || desc.includes('user is deactivated')) {
+        this.logger.warn(`Bildirishnoma bekor qilindi (foydalanuvchi botni bloklagan): target=${job.target}`);
+        await this.prisma.notificationJob.delete({ where: { id: job.id } });
+        return;
+      }
+      const retry = err.parameters?.retry_after;
       const seconds = Math.max(retry || 0, Math.min(3600, 2 ** (job.attempts + 1)));
       await this.prisma.notificationJob.update({ where: { id: job.id }, data: {
         attempts: { increment: 1 }, availableAt: new Date(Date.now() + seconds * 1000),

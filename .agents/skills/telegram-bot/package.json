@@ -1,0 +1,24 @@
+{
+  "name": "telegram-bot-skill",
+  "version": "0.1.0",
+  "description": "Expose a local CLI coding agent as a Telegram bot. Zero dependencies.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Hector Oviedo",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "start": "node src/bot.ts",
+    "bg": "node src/daemon.ts start",
+    "stop": "node src/daemon.ts stop",
+    "status": "node src/daemon.ts status",
+    "setup": "node src/setup.ts",
+    "users": "node src/users.ts",
+    "mcp": "node mcp/server.ts",
+    "mcp:http": "node mcp/server.ts --http 8765",
+    "sync-skill": "node scripts/sync-skill.mjs",
+    "test": "node --test \"src/**/*.test.ts\" \"mcp/**/*.test.ts\""
+  }
+}

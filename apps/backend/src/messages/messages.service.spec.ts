@@ -50,6 +50,7 @@ describe('MessagesService', () => {
     const notificationsService = {
       enqueueStaff: jest.fn().mockResolvedValue(undefined),
       enqueueStudent: jest.fn().mockResolvedValue(undefined),
+      triggerDrain: jest.fn(),
     };
     const realtimeService = { emit: jest.fn() };
 

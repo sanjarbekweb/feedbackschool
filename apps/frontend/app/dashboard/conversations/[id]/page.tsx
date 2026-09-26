@@ -175,31 +175,31 @@ export default function ConversationDetailPage() {
     <motion.div
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25 }}
-      className="flex flex-col h-[calc(100vh-7.5rem)] max-w-5xl mx-auto bg-surface rounded-xl border border-border-default shadow-xs overflow-hidden"
+      transition={{ duration: 0.2 }}
+      className="flex flex-col h-[calc(100vh-7.5rem)] max-w-5xl mx-auto bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs overflow-hidden"
     >
       {/* 1. Case Header */}
-      <div className="p-4 sm:px-6 border-b border-border-default flex flex-wrap items-center justify-between gap-4 bg-white shrink-0">
+      <div className="p-4 sm:px-6 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-[#111420] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="p-1.5 rounded-lg hover:bg-slate-100 text-text-muted hover:text-text-primary transition-colors"
+            className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors"
             aria-label="Orqaga"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-mono font-bold text-sm text-accent-primary-dark">
+              <span className="font-mono font-bold text-sm text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">
                 {conv.caseId}
               </span>
-              <span className="text-xs font-semibold text-text-primary">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
                 {studentAnon}
               </span>
               <CategoryBadge category={conv.category} />
               <StatusBadge status={conv.status} />
             </div>
-            <p className="text-[11px] text-text-muted mt-0.5">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               Ochilgan {new Date(conv.createdAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}
             </p>
           </div>
@@ -213,10 +213,10 @@ export default function ConversationDetailPage() {
                 updateStatusMutation.mutate(ConversationStatus.ANSWERED)
               }
               disabled={updateStatusMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-primary transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-colors disabled:opacity-50"
             >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Javob berilgan deb belgilash</span>
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Javob berilgan</span>
             </button>
           )}
 
@@ -226,7 +226,7 @@ export default function ConversationDetailPage() {
                 updateStatusMutation.mutate(ConversationStatus.CLOSED)
               }
               disabled={updateStatusMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-muted hover:text-slate-700 transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors disabled:opacity-50"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>Yopish</span>
@@ -237,7 +237,7 @@ export default function ConversationDetailPage() {
                 updateStatusMutation.mutate(ConversationStatus.ANSWERED)
               }
               disabled={updateStatusMutation.isPending}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border-default bg-surface hover:bg-slate-50 text-xs font-medium text-text-muted transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 transition-colors disabled:opacity-50"
             >
               <span>Qayta ochish</span>
             </button>
@@ -246,12 +246,26 @@ export default function ConversationDetailPage() {
       </div>
 
       {/* 2. Message History Timeline */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/50">
-        {messagesData && messagesData.meta.totalPages > 1 && <div className="flex items-center justify-center gap-3 text-sm">
-          <button className="secondary-button" disabled={!messagesData.meta.hasPreviousPage} onClick={() => setMessagePage(messagePage - 1)}>Yangiroq</button>
-          <span>{messagePage} / {messagesData.meta.totalPages}</span>
-          <button className="secondary-button" disabled={!messagesData.meta.hasNextPage} onClick={() => setMessagePage(messagePage + 1)}>Oldinroq</button>
-        </div>}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-slate-50/60 dark:bg-[#0C0E17]">
+        {messagesData && messagesData.meta.totalPages > 1 && (
+          <div className="flex items-center justify-center gap-3 text-xs">
+            <button
+              className="px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
+              disabled={!messagesData.meta.hasPreviousPage}
+              onClick={() => setMessagePage(messagePage - 1)}
+            >
+              Yangiroq
+            </button>
+            <span className="text-slate-400">{messagePage} / {messagesData.meta.totalPages}</span>
+            <button
+              className="px-3 py-1 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 disabled:opacity-40"
+              disabled={!messagesData.meta.hasNextPage}
+              onClick={() => setMessagePage(messagePage + 1)}
+            >
+              Oldinroq
+            </button>
+          </div>
+        )}
         {messagesData?.data.map((msg) => {
           const isStaff = msg.senderType === SenderType.STAFF;
           return (
@@ -259,23 +273,23 @@ export default function ConversationDetailPage() {
               key={msg.id}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.15 }}
               className={`flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-4 shadow-xs ${
+                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-4 ${
                   isStaff
-                    ? 'bg-accent-primary text-white rounded-br-xs'
-                    : 'bg-surface text-text-primary border border-border-default rounded-bl-xs'
+                    ? 'bg-[#2563EB] text-white rounded-br-xs shadow-md shadow-blue-600/25'
+                    : 'bg-white dark:bg-[#161A29] text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800 rounded-bl-xs shadow-xs'
                 }`}
               >
                 {/* Message Header */}
                 <div
                   className={`flex items-center gap-2 mb-1.5 text-[11px] ${
-                    isStaff ? 'text-white/80' : 'text-text-muted'
+                    isStaff ? 'text-white/80' : 'text-slate-400'
                   }`}
                 >
-                  <span className="font-semibold">
+                  <span className="font-bold">
                     {isStaff ? 'Xodim' : studentAnon}
                   </span>
                   <span>•</span>
@@ -299,16 +313,16 @@ export default function ConversationDetailPage() {
       </div>
 
       {/* 3. Fixed Response Composer at Bottom */}
-      <div className="p-4 border-t border-border-default bg-white shrink-0">
+      <div className="p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#111420] shrink-0">
         {isClosed ? (
-          <div className="p-3.5 rounded-lg bg-slate-100/80 text-center text-xs text-text-muted flex items-center justify-center gap-2">
+          <div className="p-3.5 rounded-2xl bg-slate-100/80 dark:bg-slate-800/80 text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
             <Lock className="w-4 h-4 text-slate-400" />
             <span>Murojaat yopilgan. Javob yozish uchun qayta oching.</span>
           </div>
         ) : (
           <form onSubmit={handleSubmit(onSendMessage)} className="space-y-2">
             {composerError && (
-              <div className="p-2.5 rounded-lg bg-red-50 border border-state-error/20 flex items-center gap-2 text-xs text-state-error">
+              <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 flex items-center gap-2 text-xs text-red-600 dark:text-red-400">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{composerError}</span>
               </div>
@@ -321,7 +335,7 @@ export default function ConversationDetailPage() {
                 aria-label="Javobingiz"
                 disabled={sendMessageMutation.isPending}
                 {...register('content')}
-                className="w-full p-3 text-xs rounded-lg border border-border-default bg-surface focus:outline-none focus:ring-2 focus:ring-accent-primary/20 focus:border-accent-primary resize-none placeholder:text-text-muted/70"
+                className="w-full p-3.5 text-xs rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] resize-none placeholder:text-slate-400 transition-all"
               />
             </div>
 
@@ -329,8 +343,8 @@ export default function ConversationDetailPage() {
               <span
                 className={`text-[11px] ${
                   contentValue.length > 4000
-                    ? 'text-state-error font-semibold'
-                    : 'text-text-muted'
+                    ? 'text-red-500 font-bold'
+                    : 'text-slate-400'
                 }`}
               >
                 {contentValue.length} / 4000 belgi
@@ -339,7 +353,7 @@ export default function ConversationDetailPage() {
               <button
                 type="submit"
                 disabled={sendMessageMutation.isPending || !contentValue.trim() || contentValue.length > 4000}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-primary hover:bg-accent-primary-dark text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold shadow-md shadow-blue-600/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendMessageMutation.isPending ? (
                   <>

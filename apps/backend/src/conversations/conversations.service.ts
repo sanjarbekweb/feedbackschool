@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import {
   ConversationCategory,
@@ -27,6 +28,8 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class ConversationsService {
+  private readonly logger = new Logger(ConversationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
@@ -39,7 +42,7 @@ export class ConversationsService {
    * Generates a collision-resistant non-sensitive Case ID e.g. "#A81F42"
    */
   private generateCaseId(): string {
-    const hex = crypto.randomBytes(6).toString('hex').toUpperCase();
+    const hex = crypto.randomBytes(3).toString('hex').toUpperCase();
     return `#${hex}`;
   }
 
@@ -75,40 +78,80 @@ export class ConversationsService {
       if (existing && existing.senderId === studentUser.id) return existing.conversation;
     }
     const recipientRoleId = dto.recipientRoleId || 'psychologist';
-    const recipient = await this.prisma.staffRole.findFirst({ where: { id: recipientRoleId, isActive: true, users: { some: { role: UserRole.STAFF, isActive: true } } } });
+    const recipient = await this.prisma.staffRole.findFirst({
+      where: {
+        id: recipientRoleId,
+        isActive: true,
+        OR: [
+          { users: { some: { role: { in: [UserRole.STAFF, UserRole.ADMIN] }, isActive: true } } },
+          { id: { in: ['psychologist', 'principal'] } },
+        ],
+      },
+    });
     if (!recipient) throw new BadRequestException('Qabul qiluvchi hozir mavjud emas.');
     const caseId = this.generateCaseId();
 
     // Atomic transaction: create case + initial message
-    const result = await this.prisma.$transaction(async (tx) => {
-      const conversation = await tx.conversation.create({
-        data: {
-          caseId,
-          recipientRoleId,
-          studentId: studentUser.id,
-          category: dto.category,
-          status: ConversationStatus.UNANSWERED,
-        },
-      });
+    const executeWithRetry = async () => {
+      let attempts = 0;
+      while (attempts < 2) {
+        attempts++;
+        try {
+          return await this.prisma.$transaction(
+            async (tx) => {
+              const conversation = await tx.conversation.create({
+                data: {
+                  caseId,
+                  recipientRoleId,
+                  studentId: studentUser.id,
+                  category: dto.category,
+                  status: ConversationStatus.UNANSWERED,
+                },
+              });
 
-      const message = await tx.message.create({
-        data: {
-          conversationId: conversation.id,
-          senderId: studentUser.id,
-          senderType: SenderType.STUDENT,
-          content: dto.initialMessage.trim(),
-          sourceKey,
-        },
-      });
+              const message = await tx.message.create({
+                data: {
+                  conversationId: conversation.id,
+                  senderId: studentUser.id,
+                  senderType: SenderType.STUDENT,
+                  content: dto.initialMessage.trim(),
+                  sourceKey,
+                },
+              });
 
-      await this.notificationsService.enqueueStaff(tx, recipientRoleId, caseId);
-      return { conversation, message };
-    });
+              await this.notificationsService.enqueueStaff(tx, recipientRoleId, caseId);
+              return { conversation, message };
+            },
+            {
+              maxWait: 10000,
+              timeout: 30000,
+            },
+          );
+        } catch (err: any) {
+          if (
+            attempts < 2 &&
+            (err?.message?.includes('Transaction not found') ||
+              err?.message?.includes('closed transaction') ||
+              err?.code === 'P2028' ||
+              err?.code === 'P2024')
+          ) {
+            this.logger.warn(`Prisma tranzaksiyasida vaqtinchalik xatolik (${err?.message}), qayta urinilmoqda...`);
+            await new Promise((r) => setTimeout(r, 500));
+            continue;
+          }
+          throw err;
+        }
+      }
+      throw new Error('Transaction failed after retries');
+    };
+
+    const result = await executeWithRetry();
+    this.notificationsService.triggerDrain?.();
 
     const createdAtIso = result.conversation.createdAt.toISOString();
 
     // Audit log (INVARIANT: never includes message content)
-    await this.auditService.record({
+    void this.auditService.record({
       actorId: studentUser.id,
       action: 'CONVERSATION_CREATED',
       targetType: 'CONVERSATION',
@@ -269,7 +312,7 @@ export class ConversationsService {
       },
     });
 
-    await this.auditService.record({
+    void this.auditService.record({
       actorId: actor.id,
       action: 'CONVERSATION_UPDATED',
       targetType: 'CONVERSATION',

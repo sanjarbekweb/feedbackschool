@@ -7,7 +7,30 @@ export const StudentKeyboards = {
       .text('📝 Xabar yozish')
       .row()
       .text('📨 Mening xabarlarim')
+      .resized()
+      .oneTime();
+  },
+
+  inputMenu() {
+    return new Keyboard()
+      .text('❌ Bekor qilish')
       .resized();
+  },
+
+  inlineMainMenu(isMinimized = false) {
+    if (isMinimized) {
+      return new InlineKeyboard().text('🔼 Menyuni ochish', 'student:menu:expand');
+    }
+    return new InlineKeyboard()
+      .text('📝 Yangi xabar yozish', 'student:action:compose')
+      .row()
+      .text('📨 Mening xabarlarim', 'student:list')
+      .row()
+      .text('🔽 Menyuni yig‘ish', 'student:menu:minimize');
+  },
+
+  cancelOnly() {
+    return new InlineKeyboard().text('❌ Bekor qilish', 'student:cancel');
   },
 
   categories() {
@@ -26,7 +49,7 @@ export const StudentKeyboards = {
   },
 
   conversationList(
-    conversations: Array<{ id: string; caseId: string; status: string }>,
+    conversations: Array<{ id: string; caseId: string; status: string; category?: string }>,
     page: number,
     totalPages: number,
   ) {
@@ -42,9 +65,31 @@ export const StudentKeyboards = {
           ? 'Javob keldi'
           : conv.status === ConversationStatus.CLOSED
           ? 'Yopilgan'
-          : 'Javob kutilmoqda';
+          : 'Kutilmoqda';
 
-      keyboard.text(`${conv.caseId} — ${statusIcon} ${statusText}`, `student:case:${conv.id}`).row();
+      const catEmoji =
+        conv.category === ConversationCategory.ACADEMIC
+          ? '📚'
+          : conv.category === ConversationCategory.PERSONAL
+          ? '💙'
+          : conv.category === ConversationCategory.SOCIAL
+          ? '👥'
+          : conv.category === ConversationCategory.URGENT
+          ? '🚨'
+          : '💬';
+
+      const catTitle =
+        conv.category === ConversationCategory.ACADEMIC
+          ? 'O‘qish'
+          : conv.category === ConversationCategory.PERSONAL
+          ? 'Shaxsiy'
+          : conv.category === ConversationCategory.SOCIAL
+          ? 'Munosabatlar'
+          : conv.category === ConversationCategory.URGENT
+          ? 'Shoshilinch'
+          : 'Umumiy';
+
+      keyboard.text(`${catEmoji} ${catTitle} — ${statusIcon} ${statusText}`, `student:case:${conv.id}`).row();
     }
 
     // Pagination row

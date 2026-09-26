@@ -1,7 +1,10 @@
 import { InlineKeyboard } from 'grammy';
 
 export const StaffKeyboards = {
-  mainMenu() {
+  mainMenu(isMinimized = false) {
+    if (isMinimized) {
+      return new InlineKeyboard().text('🔼 Menyuni ochish', 'staff:menu:expand');
+    }
     return new InlineKeyboard()
       .text('⏳ Javob kutilmoqda', 'staff:filter:UNANSWERED')
       .row()
@@ -11,7 +14,13 @@ export const StaffKeyboards = {
       .row()
       .text('👥 O‘quvchilar', 'staff:students:1')
       .row()
-      .text('📊 Statistika', 'staff:stats');
+      .text('📊 Statistika', 'staff:stats')
+      .row()
+      .text('🔽 Menyuni yig‘ish', 'staff:menu:minimize');
+  },
+
+  cancelOnly() {
+    return new InlineKeyboard().text('❌ Bekor qilish', 'staff:cancel');
   },
 
   caseList(

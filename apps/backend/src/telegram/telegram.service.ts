@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Bot, Context, InlineKeyboard, webhookCallback } from 'grammy';
+import { Bot, Context, GrammyError, HttpError, InlineKeyboard, webhookCallback } from 'grammy';
 import { ConversationsService } from '../conversations/conversations.service';
 import { MessagesService } from '../messages/messages.service';
 import { UsersService } from '../users/users.service';
@@ -71,18 +71,34 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     this.notificationsService.registerStaffGroupNotifier(async (text, telegramId) => {
       if (!this.staffBot || !telegramId) throw new Error('Xodim boti mavjud emas.');
-      await this.staffBot.api.sendMessage(telegramId, text);
+      try {
+        await this.staffBot.api.sendMessage(telegramId, text);
+      } catch (err: unknown) {
+        if (err instanceof GrammyError && err.error_code === 403) {
+          this.logger.warn(`Xodim Bot: Telegram foydalanuvchisi botni bloklagan (${telegramId})`);
+          return;
+        }
+        throw err;
+      }
     });
 
     // Wire notifications to student via Student Bot
     this.notificationsService.registerStudentNotifier(
       async (studentTelegramId: string, _caseId: string, messageText: string) => {
         if (this.studentBot) {
-          const keyboard = new InlineKeyboard().text('📨 Javobni ko‘rish', 'student:list');
-          await this.studentBot.api.sendMessage(studentTelegramId, messageText, {
-            parse_mode: 'Markdown',
-            reply_markup: keyboard,
-          });
+          try {
+            const keyboard = new InlineKeyboard().text('📨 Javobni ko‘rish', 'student:list');
+            await this.studentBot.api.sendMessage(studentTelegramId, messageText, {
+              parse_mode: 'Markdown',
+              reply_markup: keyboard,
+            });
+          } catch (err: unknown) {
+            if (err instanceof GrammyError && err.error_code === 403) {
+              this.logger.warn(`O‘quvchi Bot: Telegram foydalanuvchisi botni bloklagan (${studentTelegramId})`);
+              return;
+            }
+            throw err;
+          }
         } else {
           throw new Error('O‘quvchi boti mavjud emas.');
         }
@@ -93,6 +109,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (studentToken && studentToken.trim() !== '') {
       try {
         this.studentBot = new Bot(studentToken);
+        this.studentBot.catch((err) => {
+          this.handleBotError('O‘quvchi Bot', err);
+        });
         this.studentController = new StudentBotController(
           this.studentBot,
           this.conversationsService,
@@ -140,6 +159,9 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
     if (staffToken && staffToken.trim() !== '') {
       try {
         this.staffBot = new Bot(staffToken);
+        this.staffBot.catch((err) => {
+          this.handleBotError('Xodim Bot', err);
+        });
         this.staffController = new StaffBotController(
           this.staffBot,
           this.conversationsService,
@@ -197,6 +219,50 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       return this.staffWebhookHandler(request, response);
     }
     return response.status(200).json({ ok: true, status: 'dormant_or_polling' });
+  }
+
+  private handleBotError(
+    botName: string,
+    err: { error?: unknown; ctx?: Context; message?: string; stack?: string },
+  ) {
+    const e = err.error ?? err;
+    const ctx = err.ctx;
+    const chatId = ctx?.chat?.id ?? ctx?.from?.id;
+
+    if (e instanceof GrammyError || (typeof e === 'object' && e !== null && 'error_code' in e)) {
+      const grammyErr = e as GrammyError;
+      const code = grammyErr.error_code;
+      const desc = grammyErr.description || '';
+
+      // 403 Forbidden: User blocked the bot or account deleted
+      if (code === 403) {
+        this.logger.warn(
+          `${botName}: Foydalanuvchi botni bloklagan yoki chat mavjud emas (chatId: ${chatId}): ${desc}`,
+        );
+        return;
+      }
+
+      // 400 Bad Request: Expired callback query, message unmodified, or message deleted
+      if (
+        code === 400 &&
+        (desc.includes('query is too old') ||
+          desc.includes('message is not modified') ||
+          desc.includes('message to edit not found'))
+      ) {
+        this.logger.debug?.(`${botName}: O‘tkazib yuborilgan so‘rov (${desc})`);
+        return;
+      }
+
+      this.logger.error(`${botName} Telegram API xatosi (${code}): ${desc}`);
+      return;
+    }
+
+    if (e instanceof HttpError || (typeof e === 'object' && e !== null && 'status' in e)) {
+      this.logger.warn(`${botName} Telegram tarmoq xatosi: ${(e as Error).message}`);
+      return;
+    }
+
+    this.logger.error(`${botName} kutilmagan xato: ${err.message || String(err)}`, err.stack);
   }
 
   async onModuleDestroy() {

@@ -1,0 +1,8 @@
+.research/
+node_modules/
+.env
+examples/pi-gemma/data/
+bot-state.json
+pi-sessions/
+.bridge.pid
+.bridge.log

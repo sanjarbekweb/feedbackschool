@@ -12,6 +12,10 @@ import { PrismaService } from '../database/prisma.service';
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private readonly telegramUserCache = new Map<string, { user: any; expiresAt: number }>();
+  private readonly studentCache = new Map<string, { user: any; expiresAt: number }>();
+  private readonly rolesCache = new Map<boolean, { data: any[]; expiresAt: number }>();
+
   async findById(id: string) {
     return this.prisma.user.findUnique({
       where: { id },
@@ -19,26 +23,59 @@ export class UsersService {
   }
 
   async findByTelegramId(telegramId: string) {
-    return this.prisma.user.findUnique({
-      where: { telegramId },
-    });
-  }
+    const now = Date.now();
+    const cached = this.telegramUserCache.get(telegramId);
+    if (cached && cached.expiresAt > now) {
+      return cached.user;
+    }
 
-  async getOrCreateStudent(telegramId: string, studentIdentifier?: string) {
-    const user = await this.prisma.user.upsert({
+    const user = await this.prisma.user.findUnique({
       where: { telegramId },
-      update: {},
-      create: { telegramId, role: UserRole.STUDENT, studentIdentifier: studentIdentifier || `S-${randomUUID().slice(0, 8)}` },
     });
-    if (!user.isActive || user.role !== UserRole.STUDENT) {
-      throw new ForbiddenException('Bu hisob o‘quvchi uchun ochilmagan.');
+
+    if (user) {
+      this.telegramUserCache.set(telegramId, {
+        user,
+        expiresAt: now + 60_000, // 60s TTL
+      });
     }
 
     return user;
   }
 
+  async getOrCreateStudent(telegramId: string, studentIdentifier?: string) {
+    const now = Date.now();
+    const cached = this.studentCache.get(telegramId);
+    if (cached && cached.expiresAt > now && cached.user.isActive && cached.user.studentIdentifier) {
+      return cached.user;
+    }
+
+    let user = await this.prisma.user.upsert({
+      where: { telegramId },
+      update: {},
+      create: { telegramId, role: UserRole.STUDENT, studentIdentifier: studentIdentifier || `S-${randomUUID().slice(0, 8)}` },
+    });
+    if (!user.isActive) {
+      throw new ForbiddenException('Bu hisob faol emas.');
+    }
+    if (!user.studentIdentifier) {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { studentIdentifier: studentIdentifier || `S-${randomUUID().slice(0, 8)}` },
+      });
+    }
+
+    this.studentCache.set(telegramId, {
+      user,
+      expiresAt: now + 300_000, // 5 min TTL
+    });
+
+    return user;
+  }
+
   async ensureStaffUser(telegramId: string, role: typeof UserRole.STAFF | typeof UserRole.ADMIN = UserRole.STAFF) {
-    return this.prisma.user.upsert({
+    this.telegramUserCache.delete(telegramId);
+    const user = await this.prisma.user.upsert({
       where: { telegramId },
       update: { role },
       create: {
@@ -46,6 +83,8 @@ export class UsersService {
         role,
       },
     });
+    this.rolesCache.clear();
+    return user;
   }
 
   async listStudents(
@@ -91,20 +130,47 @@ export class UsersService {
     };
   }
   async listRoles(availableOnly = false) {
-    return this.prisma.staffRole.findMany({
-      where: availableOnly ? { isActive: true, users: { some: { isActive: true, role: UserRole.STAFF } } } : {},
-      orderBy: { name: 'asc' }, take: 100,
+    const now = Date.now();
+    const cached = this.rolesCache.get(availableOnly);
+    if (cached && cached.expiresAt > now) {
+      return cached.data;
+    }
+
+    const roles = await this.prisma.staffRole.findMany({
+      where: availableOnly
+        ? {
+            isActive: true,
+            OR: [
+              { users: { some: { isActive: true, role: { in: [UserRole.STAFF, UserRole.ADMIN] } } } },
+              { id: { in: ['psychologist', 'principal'] } },
+            ],
+          }
+        : {},
+      orderBy: { name: 'asc' },
+      take: 100,
     });
+
+    this.rolesCache.set(availableOnly, {
+      data: roles,
+      expiresAt: now + 300_000, // 5 min TTL
+    });
+
+    return roles;
   }
 
   async createRole(name: string, actor: CurrentUser) {
     if (actor.role !== UserRole.ADMIN) throw new ForbiddenException();
     try {
-      return await this.prisma.$transaction(async tx => {
-        const role = await tx.staffRole.create({ data: { name: name.trim() } });
-        await tx.auditLog.create({ data: { actorId: actor.id, action: 'ROLE_CREATED', targetType: 'STAFF_ROLE', targetId: role.id } });
-        return role;
-      });
+      const result = await this.prisma.$transaction(
+        async (tx) => {
+          const role = await tx.staffRole.create({ data: { name: name.trim() } });
+          await tx.auditLog.create({ data: { actorId: actor.id, action: 'ROLE_CREATED', targetType: 'STAFF_ROLE', targetId: role.id } });
+          return role;
+        },
+        { maxWait: 10000, timeout: 20000 },
+      );
+      this.rolesCache.clear();
+      return result;
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002') throw new ConflictException('Bu lavozim mavjud.');
       throw error;
@@ -118,15 +184,20 @@ export class UsersService {
     if (!role) throw new BadRequestException('Lavozim topilmadi.');
     const passwordHash = dto.password ? await bcrypt.hash(dto.password, 12) : null;
     try {
-      return await this.prisma.$transaction(async tx => {
-        const user = await tx.user.create({ data: {
-          displayName: dto.displayName.trim(), staffRoleId: role.id,
-          telegramId: dto.telegramId, role: UserRole.STAFF,
-          email: dto.email?.trim().toLowerCase(), passwordHash,
-        }, select: this.staffSelect });
-        await tx.auditLog.create({ data: { actorId: actor.id, action: 'STAFF_CREATED', targetType: 'USER', targetId: user.id } });
-        return user;
-      });
+      const user = await this.prisma.$transaction(
+        async (tx) => {
+          const created = await tx.user.create({ data: {
+            displayName: dto.displayName.trim(), staffRoleId: role.id,
+            telegramId: dto.telegramId, role: UserRole.STAFF,
+            email: dto.email?.trim().toLowerCase(), passwordHash,
+          }, select: this.staffSelect });
+          await tx.auditLog.create({ data: { actorId: actor.id, action: 'STAFF_CREATED', targetType: 'USER', targetId: created.id } });
+          return created;
+        },
+        { maxWait: 10000, timeout: 20000 },
+      );
+      this.rolesCache.clear();
+      return user;
     } catch (error) {
       if ((error as { code?: string }).code === 'P2002') throw new ConflictException('Bu Telegram yoki pochta hisobi mavjud.');
       throw error;
@@ -147,12 +218,18 @@ export class UsersService {
 
   async setStaffActive(id: string, isActive: boolean, actor: CurrentUser) {
     if (actor.role !== UserRole.ADMIN) throw new ForbiddenException();
-    return this.prisma.$transaction(async tx => {
-      const result = await tx.user.updateMany({ where: { id, role: UserRole.STAFF }, data: { isActive, credentialVersion: { increment: 1 } } });
-      if (!result.count) throw new BadRequestException('Xodim topilmadi.');
-      await tx.auditLog.create({ data: { actorId: actor.id, action: isActive ? 'STAFF_ENABLED' : 'STAFF_DISABLED', targetType: 'USER', targetId: id } });
-      return { id, isActive };
-    });
+    const result = await this.prisma.$transaction(
+      async (tx) => {
+        const updateResult = await tx.user.updateMany({ where: { id, role: UserRole.STAFF }, data: { isActive, credentialVersion: { increment: 1 } } });
+        if (!updateResult.count) throw new BadRequestException('Xodim topilmadi.');
+        await tx.auditLog.create({ data: { actorId: actor.id, action: isActive ? 'STAFF_ENABLED' : 'STAFF_DISABLED', targetType: 'USER', targetId: id } });
+        return { id, isActive };
+      },
+      { maxWait: 10000, timeout: 20000 },
+    );
+    this.rolesCache.clear();
+    this.telegramUserCache.clear();
+    return result;
   }
 
   async loadBotSession(id: string) {

@@ -13,6 +13,8 @@ export interface StudentSessionData {
   selectedCategory?: ConversationCategory;
   activeConversationId?: string;
   activeCaseId?: string;
+  botMessageIds?: number[];
+  isMenuMinimized?: boolean;
 }
 
 export enum StaffSessionState {
@@ -24,4 +26,6 @@ export interface StaffSessionData {
   state: StaffSessionState;
   activeConversationId?: string;
   activeCaseId?: string;
+  botMessageIds?: number[];
+  isMenuMinimized?: boolean;
 }

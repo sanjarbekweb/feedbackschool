@@ -1,0 +1,65 @@
+# Roadmap
+
+Ground rules for every phase:
+
+- Zero dependencies, Node 24 LTS stdlib only. No frameworks, no wrappers.
+- Agent-agnostic core, agents live behind the adapter contract in ARCHITECTURE.md.
+- The security boundary is deterministic code (gate + policy), never the model.
+- Every phase lands as pushed commits on main, with tests run by `node --test` and docs updated in the same phase.
+
+## Phase 0: bootstrap (done)
+
+Repo, MIT license, README stub, research store. 2026-07-09.
+
+## Phase 1: contracts and docs (done)
+
+ARCHITECTURE.md with module boundaries and each contract's in/out. This roadmap.
+
+## Phase 2: telegram client (done)
+
+`src/telegram`: thin client over `fetch` against the official Bot API, base URL injectable for tests. `getUpdates` long-poll loop with offset tracking and crash-safe resume, `sendMessage`, `editMessageText`, `sendChatAction`, `answerCallbackQuery`, `setMessageReaction`, `getMe`. Outbound queue that honors 429 `retry_after`. Chunking near the 4096-char cap on paragraph or word boundaries. HTML parse mode with `<` `>` `&` escaping.
+Tests: `node:test` plus a local `node:http` fake of the Bot API, exercised end to end through the polling loop.
+
+## Phase 3: adapter contract and first adapter (done)
+
+`src/agents/contract.ts` per ARCHITECTURE.md, plus a scripted fake adapter for tests. `src/agents/claude-code`: spawns `claude -p --output-format stream-json --verbose`, parses the NDJSON events, captures `session_id`, resumes with `--resume`. Capture the real event schema from a live run, do not trust docs alone.
+Tests: a fake `claude` executable as fixture, no network.
+
+## Phase 4: presence layer (done)
+
+`src/presence`: typing action re-sent about every 4.5s while a run lives, one status message edited in place (at least 1.5s between edits, honors `retry_after`), tool activity shown ("running a command", "editing bot.ts"), final answer as a separate message, explicit resolution on the status message. Hard timeout with a failure state that says so.
+Tests: fake adapter plus fake Bot API, assert the exact effect sequence including the timeout path.
+
+## Phase 5: access gate (done)
+
+`src/gate` and `src/store`. Identity is the numeric Telegram user id. Tiers: owner, trusted, guest, blocked, plus a pending state. Unknown user: stored pending, gets a neutral "waiting for approval" reply, owner gets Approve/Deny + tier picker inline keyboard, decision notifies the user. Owner bootstrap: first launch prints a one-time claim deep link (`t.me/BOT?start=CODE`), first valid claim becomes owner.
+Tests: end-to-end update-to-decision flows, including hostile cases: wrong claim code, double claim, blocked user, callback forgery.
+Pulled forward into this phase: the runner (per-chat queue, session persistence, capability refusal), the runnable entry (`npm start`), and a first SKILL.md so a CLI agent can guide the whole setup, including creating the bot token through BotFather for users who do not have one.
+
+## Phase 6: tier policy enforcement
+
+`src/policy` maps tiers to `TierPolicy`. The Claude Code adapter turns a policy into generated per-tier settings (permissions allow/deny), `--allowedTools` / `--disallowedTools` flags, and a PreToolUse hook that denies out-of-tier calls (a hook deny holds even in bypassPermissions mode, per the Claude Code docs). Adapters that cannot do this declare `toolGating: 'soft'` or `'none'` and the runner refuses them for non-owner tiers.
+Tests: assert the generated config and flags per tier, and that capability downgrades block routing.
+
+## Phase 7: onboarding (done)
+
+All shipped 2026-07-09. `src/qr` is our own zero-dep encoder (byte mode, EC level L, versions 1-6, all 8 masks with penalty scoring), cross-verified against an independent decoder; the claim link prints as a scannable QR at first boot. `npm run setup` is the wizard: validates the token with `getMe` (interactive prompt or env), applies optional identity (`BOT_NAME`, `BOT_DESCRIPTION`, `BOT_ABOUT`), and writes `./.env` at mode 600, which `npm start` reads by itself from then on (`.env.example` is the template). SKILL.md carries the message-by-message BotFather script, a secure dont-paste-the-token route, and a step 0 that detects an already-configured checkout and skips straight to start.
+
+## Phase 8: more adapters (Pi shipped early)
+
+The Pi coding agent adapter already shipped (2026-07-09): `pi --mode json -p` with file-based session resume via `--session <path>`, flags verified against pi 0.80.3. Pi's `--tools` / `--exclude-tools` flags are the phase 6 path to hard gating for it.
+Still to come: opencode (`opencode run` plus the `opencode.json` permissions block; verify the reported SDK deny-rule bug does not affect the config path before trusting it as hard gating), Codex CLI (`codex exec --json`, session resume), Gemini CLI. `docs/ADAPTERS.md`: how to write an adapter, how to declare capabilities honestly.
+
+## Phase 9: hardening
+
+Per-user rate limits, append-only audit log (who asked what, which tier, what was denied), token hygiene (the bot token never appears in logs or error dumps, a known CVE class in this space), per-chat run queue, restart resilience for offsets and pending approvals.
+
+## Phase 10: packaging
+
+SKILL.md written so that any harness agent, including a small local model, can install and configure the bridge by following a single file. npm publish with the empty dependency tree. CHANGELOG.
+
+## Phase 11: MCP surface (shipped 2026-07-10)
+
+`mcp/` turns the bridge into an MCP server where the client session itself is the answering agent. Zero-dep JSON-RPC 2.0 over stdio (`mcp/rpc.ts`, with cancellation and progress ticks), the same gate/store/telegram modules behind it (`mcp/bridge.ts` plugs into `createBot`'s `onRun` hook). Tools: `wait_for_message` (blocking pull, queue-backed), `send_message` (chunked), `list_users`, `set_user_tier`, `bridge_status` (carries the claim link while unclaimed). Push mode via `--channel`: declares the `claude/channel` capability and emits `notifications/claude/channel`, so Claude Code v2.1.80+ (channels research preview, session started with `--dangerously-load-development-channels server:telegram`) injects messages straight into the open session without interrupting running work. `.mcp.json` ships at the repo root with a 10-minute tool timeout. 2026-07-15: the same router gained a Streamable HTTP binding (`mcp/http.ts`, `npm run mcp:http`, 127.0.0.1, one JSON-RPC message per POST), so URL-connecting CLIs install it without spawning node; verified live with noob-cli on a local llama.cpp model.
+Verified live against the fake Bot API with claude-haiku as the client agent, plus 10 end-to-end protocol tests that spawn the real server over stdio.
+Still open here: permission relay over the channel, group and forum-topic support, `sendMessageDraft` / rich-message streaming where the Bot API offers it.

@@ -35,62 +35,62 @@ export default function StudentsPage() {
     >
       {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-accent-primary-dark">
+        <h1 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
           O‘quvchilar
         </h1>
-        <p className="text-xs text-text-muted mt-1">
-          Sizga murojaat qilgan o‘quvchilar
+        <p className="text-xs text-slate-400 mt-0.5">
+          Sizga murojaat qilgan o‘quvchilar ro‘yxati
         </p>
       </div>
 
       {/* Privacy Notice Card */}
-      <div className="p-4 rounded-xl bg-accent-soft/60 border border-accent-secondary/30 flex items-start gap-3">
-        <ShieldCheck className="w-5 h-5 text-accent-primary mt-0.5 shrink-0" />
-        <div className="text-xs text-text-primary leading-relaxed">
-          <span className="font-semibold text-accent-primary-dark block mb-0.5">
+      <div className="p-4 rounded-2xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/50 dark:border-blue-900/50 flex items-start gap-3">
+        <ShieldCheck className="w-5 h-5 text-[#1D4ED8] dark:text-blue-400 mt-0.5 shrink-0" />
+        <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
+          <span className="font-bold text-[#1D4ED8] dark:text-blue-400 block mb-0.5">
             Shaxsiy ma’lumotlar himoyasi
           </span>
-          O‘quvchilar kod bilan ko‘rsatiladi. Telefon raqamlari va Telegram nomlari ko‘rinmaydi.
+          O‘quvchilar shaxsi sir saqlanadi. Ular maxsus identifikator bilan ko‘rsatiladi.
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-surface rounded-xl border border-border-default shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-border-default flex items-center justify-between">
+      <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-accent-primary" />
-            <span className="text-xs font-semibold text-text-primary">
+            <Users className="w-4 h-4 text-[#1D4ED8] dark:text-blue-400" />
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
               O‘quvchilar ({data?.meta?.total ?? 0})
             </span>
           </div>
         </div>
 
         {isLoading ? (
-          <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-text-muted">
-            <Loader2 className="w-5 h-5 animate-spin text-accent-primary" />
+          <div className="p-16 flex flex-col justify-center items-center gap-2 text-xs text-slate-400">
+            <Loader2 className="w-5 h-5 animate-spin text-[#2563EB]" />
             <span>O‘quvchilar yuklanmoqda…</span>
           </div>
         ) : data?.data?.length === 0 ? (
-          <div className="p-16 text-center space-y-2 text-xs text-text-muted">
-            <p className="font-medium text-text-primary">Hali o‘quvchi yo‘q</p>
+          <div className="p-16 text-center space-y-2 text-xs text-slate-400">
+            <p className="font-bold text-slate-800 dark:text-slate-200">Hali o‘quvchi yo‘q</p>
             <p>O‘quvchi sizga murojaat yuborgach, shu yerda ko‘rinadi.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border-default/60">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {data?.data.map((student) => (
               <div
                 key={student.id}
-                className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50/80 transition-colors"
+                className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 border border-border-default flex items-center justify-center font-mono font-bold text-xs text-accent-primary-dark">
-                    #{student.studentIdentifier || 'S-????'}
+                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/60 flex items-center justify-center font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400">
+                    #{student.studentIdentifier?.slice(-4) || '????'}
                   </div>
                   <div>
-                    <span className="text-xs font-semibold text-text-primary block">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
                       O‘quvchi #{student.studentIdentifier || 'S-????'}
                     </span>
-                    <span className="text-[11px] text-text-muted flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
                       <Calendar className="w-3 h-3" />
                       <span>
                         Qo‘shilgan{' '}
@@ -105,8 +105,8 @@ export default function StudentsPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-slate-100 text-slate-700 text-xs font-medium">
-                    <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                    <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
                     <span>{student._count?.conversations || 0} ta murojaat</span>
                   </span>
                 </div>
@@ -117,7 +117,7 @@ export default function StudentsPage() {
 
         {/* Pagination Footer */}
         {data && data.meta.totalPages > 1 && (
-          <div className="p-4 border-t border-border-default flex items-center justify-between text-xs text-text-muted">
+          <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-400">
             <span>
               Sahifa {data.meta.page} / {data.meta.totalPages} ({data.meta.total} ta o‘quvchi)
             </span>
@@ -125,7 +125,7 @@ export default function StudentsPage() {
               <button
                 disabled={!data.meta.hasPreviousPage}
                 onClick={() => setPage(page - 1)}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 dark:text-slate-200"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span>Oldingi</span>
@@ -133,7 +133,7 @@ export default function StudentsPage() {
               <button
                 disabled={!data.meta.hasNextPage}
                 onClick={() => setPage(page + 1)}
-                className="inline-flex items-center gap-1 px-3 py-1 rounded-md border border-border-default bg-surface hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed font-medium text-slate-700 dark:text-slate-200"
               >
                 <span>Keyingi</span>
                 <ChevronRight className="w-3.5 h-3.5" />

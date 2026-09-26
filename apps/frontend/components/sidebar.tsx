@@ -13,9 +13,9 @@ import {
   BarChart3,
   Settings,
   LogOut,
-  ShieldCheck,
   Radio,
   X,
+  Sparkles,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { ConnectionStatus } from '@/lib/sse';
@@ -27,9 +27,9 @@ interface SidebarProps {
 }
 
 const NAV_ITEMS = [
-  { label: 'Umumiy ko‘rinish', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Barcha murojaatlar', href: '/dashboard/inbox', icon: Inbox },
-  { label: 'Javob kutilmoqda', href: '/dashboard/unanswered', icon: Clock },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Murojaatlar', href: '/dashboard/inbox', icon: Inbox },
+  { label: 'Kutilayotganlar', href: '/dashboard/unanswered', icon: Clock },
   { label: 'Javob berilgan', href: '/dashboard/answered', icon: CheckCircle2 },
   { label: 'O‘quvchilar', href: '/dashboard/students', icon: Users },
   { label: 'Statistika', href: '/dashboard/statistics', icon: BarChart3 },
@@ -53,26 +53,23 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
   };
 
   return (
-    <aside className="w-64 h-full bg-surface border-r border-border-default flex flex-col justify-between select-none">
+    <aside className="w-64 h-full bg-white dark:bg-[#0A0A0C] text-slate-800 dark:text-white flex flex-col justify-between select-none border-r border-slate-200/80 dark:border-[#171821] transition-colors duration-150">
       {/* Brand Header */}
       <div>
-        <div className="h-16 flex items-center px-4 sm:px-6 border-b border-border-default gap-3">
-          <div className="w-9 h-9 rounded-lg bg-accent-soft text-accent-primary-dark flex items-center justify-center border border-accent-secondary/30 shadow-xs">
-            <ShieldCheck className="w-5 h-5 text-accent-primary" />
-          </div>
-          <div>
-            <span className="font-semibold text-sm text-accent-primary-dark tracking-tight block">
-              Maktab murojaatlari
-            </span>
-            <span className="text-[11px] text-text-muted block leading-none">
-              Murojaatlar va javoblar
+        <div className="h-20 flex items-center px-6 justify-between border-b border-slate-100 dark:border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-[#2563EB] flex items-center justify-center font-black text-white text-xs shadow-md shadow-blue-500/40">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-extrabold text-xl text-slate-900 dark:text-white tracking-widest">
+              LOGO
             </span>
           </div>
           {onCloseMobile && (
             <button
               type="button"
               onClick={onCloseMobile}
-              className="ml-auto rounded-lg p-2 text-text-muted hover:bg-base hover:text-text-primary"
+              className="lg:hidden rounded-lg p-2 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-800 dark:hover:text-white transition-colors"
               aria-label="Menyuni yopish"
             >
               <X className="h-4 w-4" />
@@ -81,7 +78,7 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
         </div>
 
         {/* Navigation Items */}
-        <nav className="p-3 space-y-1">
+        <nav className="p-4 space-y-1.5 mt-2">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -94,22 +91,22 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
                 key={item.href}
                 href={item.href}
                 onClick={onCloseMobile}
-                className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`relative flex items-center gap-3.5 px-4 py-2.5 rounded-full text-xs font-semibold transition-all ${
                   isActive
-                    ? 'text-accent-primary-dark font-semibold'
-                    : 'text-text-muted hover:text-text-primary hover:bg-slate-50'
+                    ? 'text-white'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                 }`}
               >
                 {isActive && (
                   <motion.div
-                    layoutId="active-nav-indicator"
-                    className="absolute inset-0 bg-accent-soft/80 rounded-lg border border-accent-secondary/40 shadow-xs"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    layoutId="active-nav-pill"
+                    className="absolute inset-0 bg-[#2563EB] rounded-full shadow-md shadow-blue-500/30"
+                    transition={{ type: 'spring', stiffness: 400, damping: 32 }}
                   />
                 )}
                 <Icon
-                  className={`w-4 h-4 relative z-10 ${
-                    isActive ? 'text-accent-primary' : 'text-text-muted'
+                  className={`w-4 h-4 relative z-10 transition-colors ${
+                    isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'
                   }`}
                 />
                 <span className="relative z-10">{item.label}</span>
@@ -120,45 +117,45 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
       </div>
 
       {/* Footer Status & Logout */}
-      <div className="p-4 border-t border-border-default space-y-3">
+      <div className="p-5 border-t border-slate-100 dark:border-white/5 space-y-4">
         {/* Realtime Connection Indicator */}
-        <div className="flex items-center justify-between px-2 py-1.5 rounded-md bg-slate-50 border border-border-default/60">
+        <div className="flex items-center justify-between px-3 py-2 rounded-full bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/5">
           <div className="flex items-center gap-2">
             <Radio
               className={`w-3.5 h-3.5 ${
                 connectionStatus === 'connected'
-                  ? 'text-state-success animate-pulse'
+                  ? 'text-emerald-500 dark:text-emerald-400 animate-pulse'
                   : connectionStatus === 'connecting'
-                  ? 'text-state-warning animate-spin'
-                  : 'text-state-error'
+                  ? 'text-amber-500 dark:text-amber-400 animate-spin'
+                  : 'text-red-500 dark:text-red-400'
               }`}
             />
-            <span className="text-[11px] font-medium text-text-muted">
+            <span className="text-[11px] font-medium text-slate-600 dark:text-slate-400">
               {connectionStatus === 'connected'
-                ? 'Ulangan'
+                ? 'Onlayn tizim'
                 : connectionStatus === 'connecting'
                 ? 'Ulanmoqda…'
-                : 'Aloqa uzildi'}
+                : 'Oflayn'}
             </span>
           </div>
           <span
             className={`w-2 h-2 rounded-full ${
               connectionStatus === 'connected'
-                ? 'bg-state-success'
+                ? 'bg-emerald-500 dark:bg-emerald-400 shadow-xs shadow-emerald-400/50'
                 : connectionStatus === 'connecting'
-                ? 'bg-state-warning'
-                : 'bg-state-error'
+                ? 'bg-amber-500 dark:bg-amber-400'
+                : 'bg-red-500 dark:bg-red-400'
             }`}
           />
         </div>
 
-        {/* Sign Out Action */}
+        {/* Sign Out Action Button */}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-text-muted hover:text-state-error hover:bg-red-50/60 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-xs font-bold text-white bg-[#2563EB] hover:bg-[#1D4ED8] shadow-md shadow-blue-500/25 transition-all uppercase tracking-wider active:scale-95"
         >
           <LogOut className="w-4 h-4" />
-          <span>Chiqish</span>
+          <span>CHIQISH</span>
         </button>
       </div>
     </aside>
