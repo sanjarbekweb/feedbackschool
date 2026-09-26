@@ -36,15 +36,20 @@ feedbackschool/
 # Install dependencies
 pnpm install
 
-# Copy environment template
-cp .env.example .env
+# Copy the backend environment template (PowerShell: Copy-Item)
+cp apps/backend/.env.example apps/backend/.env
+
+# Build shared types used by both apps
+pnpm --filter @psychology/types build
 
 # Generate Prisma client and apply migrations
 cd apps/backend
 pnpm prisma:generate
-pnpm prisma migrate dev --name init
+pnpm prisma migrate deploy
 cd ../..
 ```
+
+Before running Prisma or starting the backend, fill in `apps/backend/.env`, including `DATABASE_URL`, `JWT_SECRET`, and the Telegram settings needed for your mode. The package commands run from `apps/backend`, so a root-only `.env` is not sufficient. For frontend configuration, use `apps/frontend/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:3001`; this is also the current local fallback.
 
 ### 3. Running in Development
 ```bash
