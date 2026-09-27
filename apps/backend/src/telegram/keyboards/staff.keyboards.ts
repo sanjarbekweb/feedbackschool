@@ -1,26 +1,34 @@
-import { InlineKeyboard } from 'grammy';
+import { InlineKeyboard, Keyboard } from 'grammy';
 
 export const StaffKeyboards = {
-  mainMenu(isMinimized = false) {
-    if (isMinimized) {
-      return new InlineKeyboard().text('🔼 Menyuni ochish', 'staff:menu:expand');
-    }
+  replyMenu() {
+    return new Keyboard()
+      .text('⏳ Javob kutilmoqda')
+      .row()
+      .text('📥 Barcha murojaatlar')
+      .row()
+      .text('✅ Javob berilganlar')
+      .resized()
+      .persistent();
+  },
+
+  mainMenu() {
     return new InlineKeyboard()
       .text('⏳ Javob kutilmoqda', 'staff:filter:UNANSWERED')
       .row()
       .text('📥 Barcha murojaatlar', 'staff:filter:ALL')
       .row()
-      .text('✅ Javob berilganlar', 'staff:filter:ANSWERED')
-      .row()
-      .text('👥 O‘quvchilar', 'staff:students:1')
-      .row()
-      .text('📊 Statistika', 'staff:stats')
-      .row()
-      .text('🔽 Menyuni yig‘ish', 'staff:menu:minimize');
+      .text('✅ Javob berilganlar', 'staff:filter:ANSWERED');
   },
 
   cancelOnly() {
     return new InlineKeyboard().text('❌ Bekor qilish', 'staff:cancel');
+  },
+
+  cancelReplyMenu() {
+    return new Keyboard()
+      .text('❌ Bekor qilish')
+      .resized();
   },
 
   caseList(
@@ -69,35 +77,5 @@ export const StaffKeyboards = {
     }
     keyboard.text('⬅️ Ro‘yxatga qaytish', 'staff:filter:UNANSWERED');
     return keyboard;
-  },
-
-  studentsList(page: number, totalPages: number) {
-    const keyboard = new InlineKeyboard();
-
-    if (page > 1) {
-      keyboard.text('◀️ Oldingi', `staff:students:${page - 1}`);
-    } else {
-      keyboard.text('◀️', 'staff:noop');
-    }
-
-    keyboard.text(`${page}/${Math.max(totalPages, 1)}`, 'staff:noop');
-
-    if (page < totalPages) {
-      keyboard.text('Keyingi ▶️', `staff:students:${page + 1}`);
-    } else {
-      keyboard.text('▶️', 'staff:noop');
-    }
-
-    keyboard.row();
-    keyboard.text('🏠 Bosh menyu', 'staff:home');
-
-    return keyboard;
-  },
-
-  statsView() {
-    return new InlineKeyboard()
-      .text('🔄 Yangilash', 'staff:stats')
-      .row()
-      .text('🏠 Bosh menyu', 'staff:home');
   },
 };

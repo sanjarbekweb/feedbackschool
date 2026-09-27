@@ -39,7 +39,7 @@ export class StaffBotController {
     private readonly conversationsService: ConversationsService,
     private readonly messagesService: MessagesService,
     private readonly usersService: UsersService,
-    private readonly statisticsService: StatisticsService,
+    _statisticsService?: StatisticsService,
   ) {
     this.bot.use(persistentSession('staff', this.sessions, this.usersService));
     this.registerMiddlewareAndHandlers();
@@ -62,7 +62,6 @@ export class StaffBotController {
     this.sessions.set(userId, {
       state: StaffSessionState.IDLE,
       botMessageIds: current.botMessageIds,
-      isMenuMinimized: current.isMenuMinimized,
     });
   }
 
@@ -213,13 +212,45 @@ export class StaffBotController {
     this.bot.use((ctx, next) => this.authMiddleware(ctx, next));
 
     // 2. /start command
+    // 2. /start command
     this.bot.command('start', async (ctx) => {
       if (!ctx.from) return;
       this.resetSession(ctx.from.id);
       await this.sendMainMenu(ctx, true);
     });
 
-    // 3. Callback Queries
+    // 3. Reply keyboard button triggers
+    this.bot.hears('⏳ Javob kutilmoqda', async (ctx) => {
+      if (!ctx.from) return;
+      this.resetSession(ctx.from.id);
+      await this.sendCaseList(ctx, 'UNANSWERED', 1);
+    });
+
+    this.bot.hears('📥 Barcha murojaatlar', async (ctx) => {
+      if (!ctx.from) return;
+      this.resetSession(ctx.from.id);
+      await this.sendCaseList(ctx, 'ALL', 1);
+    });
+
+    this.bot.hears('✅ Javob berilganlar', async (ctx) => {
+      if (!ctx.from) return;
+      this.resetSession(ctx.from.id);
+      await this.sendCaseList(ctx, 'ANSWERED', 1);
+    });
+
+    this.bot.hears('❌ Bekor qilish', async (ctx) => {
+      if (!ctx.from) return;
+      const session = this.getSession(ctx.from.id);
+      const activeId = session.activeConversationId;
+      this.resetSession(ctx.from.id);
+      if (activeId) {
+        await this.sendCaseDetail(ctx, activeId);
+      } else {
+        await this.sendMainMenu(ctx, true);
+      }
+    });
+
+    // 4. Callback Queries
     this.bot.on('callback_query:data', async (ctx) => {
       const data = ctx.callbackQuery.data;
       const userId = ctx.from?.id;
@@ -234,28 +265,6 @@ export class StaffBotController {
         this.safeAnswerCallback(ctx);
         this.resetSession(userId);
         await this.sendMainMenu(ctx);
-        return;
-      }
-
-      if (data === 'staff:menu:minimize') {
-        this.safeAnswerCallback(ctx, { text: 'Menyu yig‘ildi' });
-        this.setSession(userId, { isMenuMinimized: true });
-        await this.renderResponse(
-          ctx,
-          '🏥 *Xodimlar paneli* (Yig‘ilgan)\n\nMenyuni ochish uchun tugmani bosing.',
-          { parse_mode: 'Markdown', reply_markup: StaffKeyboards.mainMenu(true) },
-        );
-        return;
-      }
-
-      if (data === 'staff:menu:expand') {
-        this.safeAnswerCallback(ctx, { text: 'Menyu ochildi' });
-        this.setSession(userId, { isMenuMinimized: false });
-        await this.renderResponse(
-          ctx,
-          '🏥 *Xodimlar paneli*\n\nO‘quvchilar murojaatlarini boshqarish, statistikani ko‘rish va javob berish.',
-          { parse_mode: 'Markdown', reply_markup: StaffKeyboards.mainMenu(false) },
-        );
         return;
       }
 
@@ -322,19 +331,6 @@ export class StaffBotController {
         await this.handleCloseCase(ctx, conversationId);
         return;
       }
-
-      if (data.startsWith('staff:students:')) {
-        const page = parseInt(data.substring(15), 10) || 1;
-        this.safeAnswerCallback(ctx);
-        await this.sendStudentsList(ctx, page);
-        return;
-      }
-
-      if (data === 'staff:stats') {
-        this.safeAnswerCallback(ctx);
-        await this.sendStats(ctx);
-        return;
-      }
     });
 
     // 4. Message Input (for responses)
@@ -363,15 +359,12 @@ export class StaffBotController {
 
   private async sendMainMenu(ctx: Context, forceNew = false) {
     if (!ctx.from) return;
-    const session = this.getSession(ctx.from.id);
     await this.renderResponse(
       ctx,
-      session.isMenuMinimized
-        ? '🏥 *Xodimlar paneli* (Yig‘ilgan)\n\nMenyuni ochish uchun tugmani bosing.'
-        : '🏥 *Xodimlar paneli*\n\nO‘quvchilar murojaatlarini boshqarish, statistikani ko‘rish va javob berish.',
+      '🏥 *Xodimlar paneli*\n\nKerakli bo‘limni tanlang:',
       {
         parse_mode: 'Markdown',
-        reply_markup: StaffKeyboards.mainMenu(session.isMenuMinimized),
+        reply_markup: StaffKeyboards.replyMenu(),
         forceNew,
       },
     );
@@ -474,7 +467,7 @@ export class StaffBotController {
     const conv = await this.conversationsService.findOne(conversationId, this.requireStaffUser(ctx));
     if (conv.status === ConversationStatus.CLOSED) {
       await this.renderResponse(ctx, 'Murojaat yopilgan.', {
-        reply_markup: StaffKeyboards.mainMenu(),
+        reply_markup: StaffKeyboards.replyMenu(),
       });
       return;
     }
@@ -501,7 +494,8 @@ export class StaffBotController {
       `*${conv.caseId}*: javobingizni yozing.${msgPreview}`,
       {
         parse_mode: 'Markdown',
-        reply_markup: StaffKeyboards.cancelOnly(),
+        reply_markup: StaffKeyboards.cancelReplyMenu(),
+        forceNew: true,
       },
     );
   }
@@ -526,7 +520,7 @@ export class StaffBotController {
       `✅ ${caseId}: javob yuborildi.`,
       {
         parse_mode: 'Markdown',
-        reply_markup: StaffKeyboards.mainMenu(),
+        reply_markup: StaffKeyboards.replyMenu(),
         forceNew: true,
       },
     );
@@ -543,7 +537,7 @@ export class StaffBotController {
         this.logger.error('Xodim javobini saqlashda xato.', error instanceof Error ? error.stack : error);
         await ctx
           .reply('❌ Xatolik yuz berdi: javobingiz serverga yetkazilmadi. Qayta urinib ko‘ring.', {
-            reply_markup: StaffKeyboards.mainMenu(),
+            reply_markup: StaffKeyboards.replyMenu(),
           })
           .catch(() => {});
       });
@@ -569,45 +563,4 @@ export class StaffBotController {
     await this.sendCaseDetail(ctx, conversationId);
   }
 
-  private async sendStudentsList(ctx: Context, page: number) {
-    const result = await this.usersService.listStudents(page, 5, this.requireStaffUser(ctx));
-
-    if (result.meta.total === 0) {
-      await this.renderResponse(ctx, 'Hali o‘quvchi yo‘q.', {
-        reply_markup: StaffKeyboards.studentsList(1, 1),
-      });
-      return;
-    }
-
-    let text = `👥 *O‘quvchilar* (Sahifa ${result.meta.page}/${result.meta.totalPages})\n\n`;
-
-    for (const student of result.data) {
-      const code = student.studentIdentifier || 'S-????';
-      const casesCount = student._count.conversations;
-      text += `• O‘quvchi #${code} — ${casesCount} ta murojaat\n`;
-    }
-
-    await this.renderResponse(ctx, text, {
-      parse_mode: 'Markdown',
-      reply_markup: StaffKeyboards.studentsList(result.meta.page, result.meta.totalPages),
-    });
-  }
-
-  private async sendStats(ctx: Context) {
-    const stats = await this.statisticsService.getDashboardStatistics(this.requireStaffUser(ctx));
-
-    const text =
-      `📊 *Statistika*\n\n` +
-      `• Jami murojaatlar: *${stats.totalConversations}*\n` +
-      `• ⏳ Javob kutilmoqda: *${stats.unansweredCount}*\n` +
-      `• ✅ Javob berilgan: *${stats.answeredCount}*\n` +
-      `• 🔒 Yopilgan: *${stats.closedCount}*\n` +
-      `• So‘nggi 24 soatda: *${stats.recentActivityCount}*\n` +
-      `• O‘rtacha javob vaqti: *${stats.averageResponseTimeMinutes ?? '—'} daqiqa*`;
-
-    await this.renderResponse(ctx, text, {
-      parse_mode: 'Markdown',
-      reply_markup: StaffKeyboards.statsView(),
-    });
-  }
 }
