@@ -107,7 +107,7 @@ describe('Telegram Bots & Handlers (Phase 3)', () => {
       }, undefined, undefined);
 
       expect(fakeCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('#A81F42'),
+        expect.stringContaining('Xabaringiz yuborildi'),
         expect.any(Object),
       );
     });

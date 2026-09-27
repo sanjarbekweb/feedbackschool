@@ -590,16 +590,6 @@ export class StudentBotController {
         undefined,
         updateId === undefined ? undefined : `student:${updateId}`,
       )
-      .then(async (conv) => {
-        if (conv?.caseId && ctx.reply) {
-          await Promise.resolve(
-            ctx.reply(`✅ ${conv.caseId}: qabul qilindi.`, {
-              parse_mode: 'Markdown',
-              reply_markup: StudentKeyboards.mainMenu(),
-            }),
-          ).catch(() => {});
-        }
-      })
       .catch(async (error) => {
         this.logger.error('Bot amalini bajarib bo‘lmadi.', error instanceof Error ? error.stack : error);
         if (ctx.reply) {
