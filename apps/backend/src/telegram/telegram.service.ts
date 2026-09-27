@@ -92,10 +92,11 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
     // Wire notifications to student via Student Bot
     this.notificationsService.registerStudentNotifier(
-      async (studentTelegramId: string, _caseId: string, messageText: string) => {
+      async (studentTelegramId: string, caseId: string, messageText: string, conversationId?: string) => {
         if (this.studentBot) {
           try {
-            const keyboard = new InlineKeyboard().text('📨 Javobni ko‘rish', 'student:list');
+            const targetId = conversationId || caseId;
+            const keyboard = new InlineKeyboard().text('📨 Javobni ko‘rish', `student:case:${targetId}`);
             await this.studentBot.api.sendMessage(studentTelegramId, messageText, {
               parse_mode: 'Markdown',
               reply_markup: keyboard,

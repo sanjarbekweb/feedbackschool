@@ -409,7 +409,7 @@ export class StudentBotController {
       return;
     }
 
-    const messagesResult = await this.messagesService.getMessages(conversationId, page, 5);
+    const messagesResult = await this.messagesService.getMessages(conv.id, page, 5);
 
     const catEmoji =
       conv.category === ConversationCategory.ACADEMIC

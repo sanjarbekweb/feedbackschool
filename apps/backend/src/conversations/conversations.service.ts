@@ -337,8 +337,9 @@ export class ConversationsService {
       return cached;
     }
 
+    const isCaseId = id.startsWith('#');
     const conversation = await this.prisma.conversation.findUnique({
-      where: { id },
+      where: isCaseId ? { caseId: id } : { id },
       select: {
         id: true,
         studentId: true,

@@ -8,7 +8,12 @@ export type StaffGroupNotifier = (
   conversationId?: string,
   caseId?: string,
 ) => Promise<void>;
-export type StudentNotifier = (telegramId: string, caseId: string, text: string) => Promise<void>;
+export type StudentNotifier = (
+  telegramId: string,
+  caseId: string,
+  text: string,
+  conversationId?: string,
+) => Promise<void>;
 
 @Injectable()
 export class NotificationsService implements OnModuleInit, OnModuleDestroy {
@@ -91,7 +96,16 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
           );
         }
       } else {
-        await this.studentNotifier!(job.target, job.caseId, `📩 ${job.caseId}: javob keldi.`);
+        const conversation = await this.prisma.conversation.findUnique({
+          where: { caseId: job.caseId },
+          select: { id: true },
+        });
+        await this.studentNotifier!(
+          job.target,
+          job.caseId,
+          `📩 ${job.caseId}: javob keldi.`,
+          conversation?.id,
+        );
       }
       await this.prisma.notificationJob.delete({ where: { id: job.id } });
     } catch (error: unknown) {
