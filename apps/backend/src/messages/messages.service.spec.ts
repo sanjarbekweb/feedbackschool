@@ -53,12 +53,14 @@ describe('MessagesService', () => {
       triggerDrain: jest.fn(),
     };
     const realtimeService = { emit: jest.fn() };
+    const cacheService = { invalidateTags: jest.fn(), get: jest.fn(), set: jest.fn() };
 
     const service = new MessagesService(
       prisma as never,
       auditService as never,
       notificationsService as never,
       realtimeService as never,
+      cacheService as never,
     );
 
     return {

@@ -32,6 +32,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export class StaffBotController {
   private readonly logger = new Logger(StaffBotController.name);
   private readonly sessions = new Map<number, StaffSessionData>();
+  private readonly staffAuthCache = new Map<string, { user: any; expiresAt: number }>();
 
   constructor(
     private readonly bot: Bot<Context>,
@@ -65,18 +66,16 @@ export class StaffBotController {
     });
   }
 
-  private async safeAnswerCallback(
+  private safeAnswerCallback(
     ctx: Context,
     options?: Parameters<Context['answerCallbackQuery']>[0],
   ) {
-    try {
-      await ctx.answerCallbackQuery(options);
-    } catch {
-      // Ignore expired query timeout errors
+    if (ctx.callbackQuery) {
+      void ctx.answerCallbackQuery(options).catch(() => {});
     }
   }
 
-  private async cleanupPreviousBotMessages(ctx: Context, session: StaffSessionData) {
+  private cleanupPreviousBotMessages(ctx: Context, session: StaffSessionData) {
     if (!ctx.chat || !ctx.api?.deleteMessage) return;
     const chatId = ctx.chat.id;
     const ids = new Set<number>(session.botMessageIds || []);
@@ -85,7 +84,7 @@ export class StaffBotController {
     }
     session.botMessageIds = [];
     if (ids.size === 0) return;
-    await Promise.all(
+    void Promise.all(
       Array.from(ids).map((msgId) => ctx.api.deleteMessage(chatId, msgId).catch(() => {})),
     );
   }
@@ -118,8 +117,8 @@ export class StaffBotController {
       }
     }
 
-    // 2. Otherwise delete previous bot messages
-    await this.cleanupPreviousBotMessages(ctx, session);
+    // 2. Otherwise delete previous bot messages asynchronously
+    this.cleanupPreviousBotMessages(ctx, session);
 
     // 3. Send fresh message
     try {
@@ -164,12 +163,23 @@ export class StaffBotController {
     if (!ctx.from) return;
 
     const telegramId = String(ctx.from.id);
-    const user = await this.usersService.findByTelegramId(telegramId);
+    const now = Date.now();
+    const cachedStaff = this.staffAuthCache.get(telegramId);
+    let user: any = null;
+
+    if (cachedStaff && cachedStaff.expiresAt > now) {
+      user = cachedStaff.user;
+    } else {
+      user = await this.usersService.findByTelegramId(telegramId);
+      if (user && user.isActive && (user.role === UserRole.STAFF || user.role === UserRole.ADMIN)) {
+        this.staffAuthCache.set(telegramId, { user, expiresAt: now + 900_000 });
+      }
+    }
 
     if (!user || !user.isActive || (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)) {
       this.logger.warn('Unauthorized staff bot access attempt.');
       if (ctx.callbackQuery) {
-        await this.safeAnswerCallback(ctx, {
+        this.safeAnswerCallback(ctx, {
           text: '⛔ Kirish uchun ruxsat kerak.',
           show_alert: true,
         });
@@ -216,19 +226,19 @@ export class StaffBotController {
       if (!userId) return;
 
       if (data === 'staff:noop') {
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         return;
       }
 
       if (data === 'staff:home') {
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         this.resetSession(userId);
         await this.sendMainMenu(ctx);
         return;
       }
 
       if (data === 'staff:menu:minimize') {
-        await this.safeAnswerCallback(ctx, { text: 'Menyu yig‘ildi' });
+        this.safeAnswerCallback(ctx, { text: 'Menyu yig‘ildi' });
         this.setSession(userId, { isMenuMinimized: true });
         await this.renderResponse(
           ctx,
@@ -239,7 +249,7 @@ export class StaffBotController {
       }
 
       if (data === 'staff:menu:expand') {
-        await this.safeAnswerCallback(ctx, { text: 'Menyu ochildi' });
+        this.safeAnswerCallback(ctx, { text: 'Menyu ochildi' });
         this.setSession(userId, { isMenuMinimized: false });
         await this.renderResponse(
           ctx,
@@ -250,7 +260,7 @@ export class StaffBotController {
       }
 
       if (data === 'staff:cancel') {
-        await this.safeAnswerCallback(ctx, { text: 'Bekor qilindi' });
+        this.safeAnswerCallback(ctx, { text: 'Bekor qilindi' });
         const session = this.getSession(userId);
         const activeId = session.activeConversationId;
         this.resetSession(userId);
@@ -264,7 +274,7 @@ export class StaffBotController {
 
       if (data.startsWith('staff:filter:')) {
         const filter = data.substring(13);
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendCaseList(ctx, filter, 1);
         return;
       }
@@ -273,55 +283,55 @@ export class StaffBotController {
         const parts = data.split(':');
         const filter = parts[2] || 'ALL';
         const page = parseInt(parts[3] || '1', 10) || 1;
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendCaseList(ctx, filter, page);
         return;
       }
 
       if (data.startsWith('staff:history:')) {
         const [, , id = '', pageText = '1'] = data.split(':');
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendCaseDetail(ctx, id, Math.max(1, parseInt(pageText, 10) || 1));
         return;
       }
 
       if (data.startsWith('staff:case:')) {
         const conversationId = data.substring(11);
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendCaseDetail(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:respond:')) {
         const conversationId = data.substring(21);
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.handleStartReply(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:mark_answered:')) {
         const conversationId = data.substring(27);
-        await this.safeAnswerCallback(ctx, { text: 'Javob berilgan deb belgilandi' });
+        this.safeAnswerCallback(ctx, { text: 'Javob berilgan deb belgilandi' });
         await this.handleMarkAnswered(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:action:close:')) {
         const conversationId = data.substring(19);
-        await this.safeAnswerCallback(ctx, { text: 'Murojaat yopildi' });
+        this.safeAnswerCallback(ctx, { text: 'Murojaat yopildi' });
         await this.handleCloseCase(ctx, conversationId);
         return;
       }
 
       if (data.startsWith('staff:students:')) {
         const page = parseInt(data.substring(15), 10) || 1;
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendStudentsList(ctx, page);
         return;
       }
 
       if (data === 'staff:stats') {
-        await this.safeAnswerCallback(ctx);
+        this.safeAnswerCallback(ctx);
         await this.sendStats(ctx);
         return;
       }

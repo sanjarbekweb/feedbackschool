@@ -24,6 +24,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { ConversationFilterDto } from './dto/conversation-filter.dto';
+import { InMemoryCacheService } from '../common/cache/in-memory-cache.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class ConversationsService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly realtimeService: RealtimeService,
+    private readonly cache: InMemoryCacheService,
   ) {}
 
   /**
@@ -176,6 +178,8 @@ export class ConversationsService {
       },
     });
 
+    this.cache.invalidateTags('conversations', 'statistics');
+
     return result.conversation;
   }
 
@@ -187,6 +191,12 @@ export class ConversationsService {
     filter: ConversationFilterDto,
     currentUser: CurrentUser,
   ): Promise<PaginatedResponse<ConversationListItem>> {
+    const cacheKey = `conv:list:${currentUser.id}:${currentUser.role}:${filter.page}:${filter.limit}:${filter.status || ''}:${filter.category || ''}:${filter.search || ''}:${filter.sortBy || ''}:${filter.date || ''}`;
+    const cached = this.cache.get<PaginatedResponse<ConversationListItem>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const page = filter.page;
     const limit = filter.limit;
     const skip = (page - 1) * limit;
@@ -204,6 +214,17 @@ export class ConversationsService {
 
     if (filter.category) {
       where.category = filter.category;
+    }
+
+    if (filter.date) {
+      const startOfDay = new Date(`${filter.date}T00:00:00.000+05:00`);
+      const endOfDay = new Date(`${filter.date}T23:59:59.999+05:00`);
+      if (!isNaN(startOfDay.getTime()) && !isNaN(endOfDay.getTime())) {
+        where.createdAt = {
+          gte: startOfDay,
+          lte: endOfDay,
+        };
+      }
     }
 
     if (filter.search) {
@@ -250,7 +271,7 @@ export class ConversationsService {
 
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    const result: PaginatedResponse<ConversationListItem> = {
       data: conversations,
       meta: {
         total,
@@ -261,6 +282,48 @@ export class ConversationsService {
         hasPreviousPage: page > 1,
       },
     };
+
+    this.cache.set(cacheKey, result, 30, ['conversations']);
+
+    return result;
+  }
+
+  /**
+   * Returns active case counts by day for a given month in Tashkent timezone.
+   */
+  async getCalendarDates(
+    month: string | undefined,
+    currentUser: CurrentUser,
+  ): Promise<Record<string, number>> {
+    const admin = currentUser.role === UserRole.ADMIN;
+    const roleId = currentUser.staffRoleId || '__unassigned__';
+    const targetMonth = month && /^\d{4}-\d{2}$/.test(month)
+      ? month
+      : new Date().toISOString().slice(0, 7);
+
+    const cacheKey = `conv:cal:${currentUser.id}:${currentUser.role}:${targetMonth}`;
+    const cached = this.cache.get<Record<string, number>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    const rows = await this.prisma.$queryRaw<{ date: string; count: number }[]>`
+      SELECT TO_CHAR("createdAt" AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM-DD') AS date,
+             COUNT(*)::int AS count
+      FROM conversations
+      WHERE (${admin} OR "recipientRoleId" = ${roleId})
+        AND TO_CHAR("createdAt" AT TIME ZONE 'Asia/Tashkent', 'YYYY-MM') = ${targetMonth}
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `;
+
+    const dates: Record<string, number> = {};
+    for (const r of rows) {
+      dates[r.date] = r.count;
+    }
+
+    this.cache.set(cacheKey, dates, 60, ['conversations']);
+    return dates;
   }
 
   /**
@@ -337,6 +400,8 @@ export class ConversationsService {
         updatedAt: updated.updatedAt.toISOString(),
       },
     });
+
+    this.cache.invalidateTags('conversations', 'statistics');
 
     return updated;
   }

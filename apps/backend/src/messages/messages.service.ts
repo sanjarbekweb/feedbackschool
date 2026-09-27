@@ -17,6 +17,7 @@ import { PrismaService } from '../database/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { InMemoryCacheService } from '../common/cache/in-memory-cache.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 
 @Injectable()
@@ -28,6 +29,7 @@ export class MessagesService {
     private readonly auditService: AuditService,
     private readonly notificationsService: NotificationsService,
     private readonly realtimeService: RealtimeService,
+    private readonly cache: InMemoryCacheService,
   ) {}
 
   /**
@@ -230,6 +232,8 @@ export class MessagesService {
         updatedAt: result.updatedConversation.updatedAt.toISOString(),
       },
     });
+
+    this.cache.invalidateTags('conversations', 'statistics');
 
     return result.message;
   }

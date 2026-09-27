@@ -194,6 +194,17 @@ export interface ConversationFilterQuery extends PaginationQuery {
   category?: ConversationCategory;
   search?: string;
   sortBy?: 'newest' | 'oldest' | 'lastMessage';
+  date?: string; // YYYY-MM-DD
+}
+
+export interface CalendarDateCount {
+  date: string; // YYYY-MM-DD
+  count: number;
+}
+
+export interface CalendarDatesResponse {
+  month: string; // YYYY-MM
+  dates: Record<string, number>;
 }
 
 // ==========================================
@@ -228,12 +239,15 @@ export interface StudentDirectoryItem {
 
 export interface DashboardStatistics {
   totalConversations: number;
+  totalStudents?: number;
   unansweredCount: number;
   inProgressCount: number;
   answeredCount: number;
   closedCount: number;
   averageResponseTimeMinutes: number | null;
   recentActivityCount: number;
+  categoryBreakdown?: Record<string, number>;
+  dutyRole?: string;
 }
 
 // ==========================================

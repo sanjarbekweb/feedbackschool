@@ -47,6 +47,19 @@ export class ConversationsController {
     };
   }
 
+  @Get('calendar-dates')
+  @Roles(UserRole.STAFF, UserRole.ADMIN)
+  async getCalendarDates(
+    @Query('month') month: string,
+    @CurrentUser() user: CurrentUserType,
+  ): Promise<ApiResponse<Record<string, number>>> {
+    const dates = await this.conversationsService.getCalendarDates(month, user);
+    return {
+      success: true,
+      data: dates,
+    };
+  }
+
   @Get(':id')
   @UseGuards(ConversationOwnershipGuard)
   async findOne(@Param('id') id: string): Promise<ApiResponse<ConversationDetail>> {

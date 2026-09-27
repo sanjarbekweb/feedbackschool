@@ -19,4 +19,8 @@ export class ConversationFilterDto extends PaginationDto {
   @IsIn(['newest', 'oldest', 'lastMessage'])
   @IsOptional()
   sortBy?: 'newest' | 'oldest' | 'lastMessage' = 'lastMessage';
+
+  @IsString()
+  @IsOptional()
+  date?: string; // YYYY-MM-DD
 }
