@@ -485,10 +485,20 @@ export class StaffBotController {
       activeCaseId: conv.caseId,
     });
 
+    let msgPreview = '';
+    try {
+      const messages = await this.messagesService.getMessages(conv.id, 1, 1);
+      const lastMsg = messages.data[messages.data.length - 1];
+      if (lastMsg?.content) {
+        const truncated = lastMsg.content.length > 200 ? lastMsg.content.slice(0, 197) + '...' : lastMsg.content;
+        msgPreview = `\n\n💬 *Oxirgi xabar:*\n_${truncated.replace(/([*_`\[])/g, '\\$1')}_`;
+      }
+    } catch {}
+
     // Button menu disappears / minimizes to a single cancel button
     await this.renderResponse(
       ctx,
-      `*${conv.caseId}*: javobingizni yozing.`,
+      `*${conv.caseId}*: javobingizni yozing.${msgPreview}`,
       {
         parse_mode: 'Markdown',
         reply_markup: StaffKeyboards.cancelOnly(),

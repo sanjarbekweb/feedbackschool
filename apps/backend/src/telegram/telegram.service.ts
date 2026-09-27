@@ -69,10 +69,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    this.notificationsService.registerStaffGroupNotifier(async (text, telegramId) => {
+    this.notificationsService.registerStaffGroupNotifier(async (text, telegramId, conversationId) => {
       if (!this.staffBot || !telegramId) throw new Error('Xodim boti mavjud emas.');
       try {
-        await this.staffBot.api.sendMessage(telegramId, text);
+        const keyboard = conversationId
+          ? new InlineKeyboard()
+              .text('💬 Javob berish', `staff:action:respond:${conversationId}`)
+              .text('👁 Ko‘rish', `staff:case:${conversationId}`)
+          : undefined;
+
+        await this.staffBot.api.sendMessage(telegramId, text, {
+          reply_markup: keyboard,
+        });
       } catch (err: unknown) {
         if (err instanceof GrammyError && err.error_code === 403) {
           this.logger.warn(`Xodim Bot: Telegram foydalanuvchisi botni bloklagan (${telegramId})`);

@@ -2,7 +2,12 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { Prisma, NotificationJob } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service';
 
-export type StaffGroupNotifier = (text: string, telegramId?: string) => Promise<void>;
+export type StaffGroupNotifier = (
+  text: string,
+  telegramId?: string,
+  conversationId?: string,
+  caseId?: string,
+) => Promise<void>;
 export type StudentNotifier = (telegramId: string, caseId: string, text: string) => Promise<void>;
 
 @Injectable()
@@ -69,13 +74,21 @@ export class NotificationsService implements OnModuleInit, OnModuleDestroy {
     try {
       if (job.kind === 'STAFF') {
         const user = await this.prisma.user.findUnique({ where: { id: job.target } });
-        const conversation = await this.prisma.conversation.findUnique({ where: { caseId: job.caseId }, select: { recipientRoleId: true } });
+        const conversation = await this.prisma.conversation.findUnique({
+          where: { caseId: job.caseId },
+          select: { id: true, recipientRoleId: true },
+        });
         if (
           user?.isActive &&
           user.telegramId &&
           (user.role === 'ADMIN' || (user.role === 'STAFF' && user.staffRoleId === conversation?.recipientRoleId))
         ) {
-          await this.staffGroupNotifier!(`🔔 Yangi xabar: ${job.caseId}\nMurojaatni bot yoki panelda oching.`, user.telegramId);
+          await this.staffGroupNotifier!(
+            `🔔 Yangi xabar: ${job.caseId}\nMurojaatni bot yoki panelda oching.`,
+            user.telegramId,
+            conversation?.id,
+            job.caseId,
+          );
         }
       } else {
         await this.studentNotifier!(job.target, job.caseId, `📩 ${job.caseId}: javob keldi.`);

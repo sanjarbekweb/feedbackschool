@@ -6,7 +6,7 @@ describe('Durable notifications', () => {
     const prisma = {
       $queryRaw: jest.fn().mockResolvedValue([job]),
       user: { findUnique: jest.fn().mockResolvedValue({ isActive: active, role: 'STAFF', telegramId: '123', staffRoleId: 'principal' }) },
-      conversation: { findUnique: jest.fn().mockResolvedValue({ recipientRoleId: 'principal' }) },
+      conversation: { findUnique: jest.fn().mockResolvedValue({ id: 'c-1', recipientRoleId: 'principal' }) },
       notificationJob: { delete: jest.fn(), update: jest.fn() },
     };
     const service = new NotificationsService(prisma as never);
@@ -19,7 +19,7 @@ describe('Durable notifications', () => {
   it('sends only a case reference to the authorized recipient', async () => {
     const { service, send, prisma } = fixture();
     await service.drain();
-    expect(send).toHaveBeenCalledWith('🔔 Yangi xabar: #CASE\nMurojaatni bot yoki panelda oching.', '123');
+    expect(send).toHaveBeenCalledWith('🔔 Yangi xabar: #CASE\nMurojaatni bot yoki panelda oching.', '123', 'c-1', '#CASE');
     expect(prisma.notificationJob.delete).toHaveBeenCalledWith({ where: { id: 'job' } });
   });
 

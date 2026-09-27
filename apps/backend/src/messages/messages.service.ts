@@ -40,6 +40,12 @@ export class MessagesService {
     page = 1,
     limit = 50,
   ): Promise<PaginatedResponse<ConversationMessage>> {
+    const cacheKey = `msg:${conversationId}:${page}:${limit}`;
+    const cached = this.cache.get<PaginatedResponse<ConversationMessage>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const skip = (page - 1) * limit;
 
     const [messages, total] = await Promise.all([
@@ -64,7 +70,7 @@ export class MessagesService {
 
     const totalPages = Math.ceil(total / limit);
 
-    return {
+    const result: PaginatedResponse<ConversationMessage> = {
       data: messages.reverse(),
       meta: {
         total,
@@ -75,6 +81,9 @@ export class MessagesService {
         hasPreviousPage: page > 1,
       },
     };
+
+    this.cache.set(cacheKey, result, 30, ['messages', `conv:${conversationId}`]);
+    return result;
   }
 
   /**
@@ -233,7 +242,7 @@ export class MessagesService {
       },
     });
 
-    this.cache.invalidateTags('conversations', 'statistics');
+    this.cache.invalidateTags('conversations', 'statistics', 'messages', `conv:${conversationId}`);
 
     return result.message;
   }

@@ -330,6 +330,13 @@ export class ConversationsService {
    * Retrieves single conversation by ID.
    */
   async findOne(id: string, actor?: CurrentUser): Promise<ConversationDetail & { studentId: string; recipientRoleId: string }> {
+    const cacheKey = `conv:detail:${id}`;
+    const cached = this.cache.get<ConversationDetail & { studentId: string; recipientRoleId: string }>(cacheKey);
+    if (cached) {
+      if (actor) assertConversationAccess(cached, actor);
+      return cached;
+    }
+
     const conversation = await this.prisma.conversation.findUnique({
       where: { id },
       select: {
@@ -356,6 +363,8 @@ export class ConversationsService {
     if (!conversation) {
       throw new NotFoundException('Murojaat topilmadi');
     }
+
+    this.cache.set(cacheKey, conversation, 60, ['conversations', `conv:${id}`]);
 
     if (actor) assertConversationAccess(conversation, actor);
     return conversation;
@@ -401,7 +410,7 @@ export class ConversationsService {
       },
     });
 
-    this.cache.invalidateTags('conversations', 'statistics');
+    this.cache.invalidateTags('conversations', 'statistics', `conv:${id}`);
 
     return updated;
   }
