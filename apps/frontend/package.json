@@ -4,6 +4,7 @@
   "private": true,
   "description": "Next.js Dashboard for School Psychology Support System",
   "scripts": {
+    "prebuild": "pnpm --filter @psychology/types build",
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
