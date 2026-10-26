@@ -17,7 +17,7 @@ import {
   X,
   Sparkles,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
+import { apiClient, removeAuthToken } from '@/lib/api';
 import { ConnectionStatus } from '@/lib/sse';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -47,6 +47,7 @@ export function Sidebar({ connectionStatus, onCloseMobile }: SidebarProps) {
     } catch {
       // Proceed with redirect regardless of network error
     } finally {
+      removeAuthToken();
       queryClient.clear();
       router.replace('/login');
     }

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'motion/react';
 import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Loader2, Sun, Moon } from 'lucide-react';
-import { apiClient, ApiError } from '@/lib/api';
+import { apiClient, ApiError, setAuthToken } from '@/lib/api';
 import { useTheme } from '@/components/theme-provider';
 
 const loginSchema = z.object({
@@ -38,10 +38,14 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await apiClient('/api/auth/login', {
+      const response = await apiClient<{ token?: string }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify(data),
       });
+
+      if (response?.token) {
+        setAuthToken(response.token);
+      }
 
       // Successful login - redirect to dashboard
       window.location.href = '/dashboard';

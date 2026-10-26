@@ -26,7 +26,7 @@ export class AuthController {
   async login(
     @Body() dto: LoginDto,
     @Res({ passthrough: true }) response: Response,
-  ): Promise<ApiResponse<{ user: CurrentUserType; expiresAt: string }>> {
+  ): Promise<ApiResponse<{ user: CurrentUserType; token: string; expiresAt: string }>> {
     const { user, token } = await this.authService.validateStaffLogin(dto);
 
     // Set secure HttpOnly cookie
@@ -44,6 +44,7 @@ export class AuthController {
       success: true,
       data: {
         user,
+        token,
         expiresAt,
       },
     };

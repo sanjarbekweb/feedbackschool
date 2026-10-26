@@ -6,6 +6,35 @@ import {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+const TOKEN_KEY = 'feedbackschool_access_token';
+
+export function getAuthToken(): string | null {
+  if (typeof window !== 'undefined') {
+    try {
+      return localStorage.getItem(TOKEN_KEY);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+export function setAuthToken(token: string): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(TOKEN_KEY, token);
+    } catch {}
+  }
+}
+
+export function removeAuthToken(): void {
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.removeItem(TOKEN_KEY);
+    } catch {}
+  }
+}
+
 export class ApiError extends Error {
   constructor(
     public code: string,
@@ -24,9 +53,13 @@ async function requestEnvelope<T, TMeta = never>(
 ): Promise<ApiResponse<T, TMeta>> {
   const url = `${API_BASE}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 
+  const token = getAuthToken();
+  const authHeaders: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+
   const defaultHeaders: HeadersInit = {
     'Content-Type': 'application/json',
     Accept: 'application/json',
+    ...authHeaders,
   };
 
   const response = await fetch(url, {

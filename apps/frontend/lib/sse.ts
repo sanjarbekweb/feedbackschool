@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { RealtimeEvent } from '@psychology/types';
+import { getAuthToken } from './api';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -33,7 +34,12 @@ export function useRealtimeEvents(enabled = true) {
 
     const connect = () => {
       setStatus('connecting');
-      eventSource = new EventSource(`${API_BASE}/api/events`, {
+      const token = getAuthToken();
+      const sseUrl = token
+        ? `${API_BASE}/api/events?token=${encodeURIComponent(token)}`
+        : `${API_BASE}/api/events`;
+
+      eventSource = new EventSource(sseUrl, {
         withCredentials: true,
       });
 
