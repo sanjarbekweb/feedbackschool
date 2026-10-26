@@ -23,6 +23,18 @@ async function bootstrap() {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const isOriginAllowed = (origin?: string): boolean => {
+    if (!origin) return true;
+    if (allowedOrigins.includes(origin)) return true;
+    try {
+      const hostname = new URL(origin).hostname;
+      if (hostname.endsWith('.vercel.app') || hostname === 'localhost') return true;
+    } catch {
+      return false;
+    }
+    return false;
+  };
+
   // Parse HTTP-only cookies
   app.use(cookieParser());
 
@@ -38,7 +50,7 @@ async function bootstrap() {
       unsafeMethod &&
       cookieAuthenticated &&
       !telegramWebhook &&
-      (!origin || !allowedOrigins.includes(origin))
+      !isOriginAllowed(origin)
     ) {
       response.status(403).json({
         success: false,
@@ -79,7 +91,13 @@ async function bootstrap() {
 
   // Cross-Origin Resource Sharing
   app.enableCors({
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS bloklandi: ruxsat berilmagan manzil.'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
