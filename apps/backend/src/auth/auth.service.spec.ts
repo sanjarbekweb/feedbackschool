@@ -9,7 +9,10 @@ import * as bcrypt from 'bcryptjs';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: { user: { findUnique: jest.Mock } };
+  let prisma: {
+    user: { findUnique: jest.Mock; findFirst: jest.Mock; create: jest.Mock };
+    staffRole: { upsert: jest.Mock };
+  };
   let jwtService: { sign: jest.Mock };
   let auditService: { record: jest.Mock };
 
@@ -17,6 +20,11 @@ describe('AuthService', () => {
     prisma = {
       user: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+      },
+      staffRole: {
+        upsert: jest.fn(),
       },
     };
     jwtService = {
@@ -106,5 +114,36 @@ describe('AuthService', () => {
         password: 'valid-password',
       }),
     ).rejects.toThrow(UnauthorizedException);
+  });
+
+  describe('roleLogin', () => {
+    it('authenticates a role user and creates if not existing', async () => {
+      prisma.staffRole.upsert.mockResolvedValue({ id: 'principal', name: 'Direktor', isActive: true });
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.user.create.mockResolvedValue({
+        id: 'principal-uuid',
+        telegramId: null,
+        email: 'principal@maktab.uz',
+        role: UserRole.STAFF,
+        staffRoleId: 'principal',
+        displayName: 'Direktor',
+        studentIdentifier: null,
+        credentialVersion: 1,
+        isActive: true,
+      });
+
+      const res = await service.roleLogin('principal');
+
+      expect(res.user.role).toBe(UserRole.STAFF);
+      expect(res.user.staffRoleId).toBe('principal');
+      expect(res.token).toBe('mock-jwt-token');
+      expect(auditService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'STAFF_ROLE_LOGIN' }),
+      );
+    });
+
+    it('rejects an invalid role string', async () => {
+      await expect(service.roleLogin('invalid' as any)).rejects.toThrow(UnauthorizedException);
+    });
   });
 });

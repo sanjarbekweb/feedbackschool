@@ -176,37 +176,37 @@ export default function ConversationDetailPage() {
       initial={{ opacity: 0, x: 8 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.2 }}
-      className="flex flex-col h-[calc(100vh-7.5rem)] max-w-5xl mx-auto bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs overflow-hidden"
+      className="flex flex-col h-[calc(100dvh-3.5rem)] sm:h-[calc(100vh-7.5rem)] max-w-5xl mx-auto bg-white dark:bg-[#111420] sm:rounded-2xl border-0 sm:border border-slate-200/70 dark:border-slate-800 sm:shadow-xs overflow-hidden"
     >
       {/* 1. Case Header */}
-      <div className="p-2.5 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-[#111420] shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="p-3 sm:p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 bg-white/95 dark:bg-[#111420]/95 backdrop-blur-md sticky top-0 z-10 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
           <button
             onClick={() => router.back()}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white transition-colors cursor-pointer"
+            className="p-2 -ml-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer active:scale-95 shrink-0"
             aria-label="Orqaga"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
+              <span className="font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md shrink-0">
                 {conv.caseId}
               </span>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200">
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
                 {studentAnon}
               </span>
               <CategoryBadge category={conv.category} />
               <StatusBadge status={conv.status} />
             </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">
+            <p className="text-[10px] text-slate-400 mt-0.5 truncate">
               {new Date(conv.createdAt).toLocaleString('uz-UZ', { timeZone: 'Asia/Tashkent' })}
             </p>
           </div>
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-1.5 self-end sm:self-auto">
+        <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
           {!isClosed && conv.status !== ConversationStatus.ANSWERED && (
             <button
               onClick={() =>
@@ -277,7 +277,7 @@ export default function ConversationDetailPage() {
               className={`flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-4 ${
+                className={`max-w-[85%] sm:max-w-[70%] rounded-2xl p-3 sm:p-4 ${
                   isStaff
                     ? 'bg-[#2563EB] text-white rounded-br-xs shadow-md shadow-blue-600/25'
                     : 'bg-white dark:bg-[#161A29] text-slate-900 dark:text-slate-100 border border-slate-200/80 dark:border-slate-800 rounded-bl-xs shadow-xs'
@@ -313,7 +313,7 @@ export default function ConversationDetailPage() {
       </div>
 
       {/* 3. Fixed Response Composer at Bottom */}
-      <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-[#111420] shrink-0">
+      <div className="p-3 sm:p-4 border-t border-slate-100 dark:border-slate-800 bg-white/95 dark:bg-[#111420]/95 backdrop-blur-md shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {isClosed ? (
           <div className="p-3 rounded-xl bg-slate-100/80 dark:bg-slate-800/80 text-center text-xs text-slate-500 dark:text-slate-400 flex items-center justify-center gap-2">
             <Lock className="w-3.5 h-3.5 text-slate-400" />
@@ -335,7 +335,7 @@ export default function ConversationDetailPage() {
                 aria-label="Javobingiz"
                 disabled={sendMessageMutation.isPending}
                 {...register('content')}
-                className="w-full p-2.5 sm:p-3 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] resize-none placeholder:text-slate-400 transition-all"
+                className="w-full p-2.5 sm:p-3 text-base sm:text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] resize-none placeholder:text-slate-400 transition-all"
               />
             </div>
 

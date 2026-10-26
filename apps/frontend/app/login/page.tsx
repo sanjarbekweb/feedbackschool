@@ -45,7 +45,7 @@ export default function LoginPage() {
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Yorug‘ rejimga o‘tish' : 'Qorong‘i rejimga o‘tish'}
           title={theme === 'dark' ? 'Yorug‘ rejim' : 'Qorong‘i rejim'}
-          className="p-2 sm:p-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111420] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-xs transition-colors cursor-pointer"
+          className="p-2.5 sm:p-3 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111420] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-xs transition-transform active:scale-90 cursor-pointer"
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4 text-amber-400" />

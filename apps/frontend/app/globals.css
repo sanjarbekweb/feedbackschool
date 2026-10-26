@@ -66,10 +66,10 @@ body {
 }
 
 /* Apple design: clear hierarchy, immediate press feedback, comfortable targets. */
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 1rem; line-height: 1.5; }
-h1, h2 { letter-spacing: -0.02em; font-optical-sizing: auto; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Segoe UI', Roboto, sans-serif; font-size: 1rem; line-height: 1.5; -webkit-tap-highlight-color: transparent; }
+h1, h2, h3 { letter-spacing: -0.02em; font-optical-sizing: auto; }
 button, a, input, select, textarea { touch-action: manipulation; }
-button, select, input { min-height: 2.75rem; }
+.touch-target { min-height: 2.75rem; }
 button:active:not(:disabled) { transform: scale(0.98); }
 button:disabled { cursor: not-allowed; opacity: .55; }
 .settings-card { background: var(--bg-surface); border: 1px solid var(--border-default); border-radius: .75rem; padding: 1.5rem; display: grid; gap: 1rem; }

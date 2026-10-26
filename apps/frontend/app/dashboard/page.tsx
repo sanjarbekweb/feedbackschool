@@ -325,9 +325,9 @@ export default function DashboardOverviewPage() {
       </div>
 
       {/* ROW 2: Calendar Week Strip (Left) + Recent Cases Table (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
         {/* Left: Week Calendar Selector */}
-        <div className="bg-white dark:bg-[#111420] rounded-2xl p-6 border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="bg-white dark:bg-[#111420] rounded-2xl p-3.5 sm:p-6 border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight">
               {monthHeader}
@@ -427,7 +427,7 @@ export default function DashboardOverviewPage() {
         </div>
 
         {/* Right: Recent Conversations Feed (Filtered by Selected Date) */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#111420] rounded-2xl p-6 border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="lg:col-span-2 bg-white dark:bg-[#111420] rounded-2xl p-4 sm:p-6 border border-slate-200/70 dark:border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <div className="flex items-center gap-2">
@@ -490,19 +490,19 @@ export default function DashboardOverviewPage() {
                 <Link
                   key={c.id}
                   href={`/dashboard/conversations/${c.id}`}
-                  className="py-3 px-2 flex items-center justify-between hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-xl transition-all -mx-2 group"
+                  className="py-3 px-2 sm:px-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-slate-50/80 dark:hover:bg-slate-800/50 rounded-xl transition-all -mx-1 sm:-mx-2 group"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="font-mono font-bold text-[11px] sm:text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-md shrink-0">
                       {c.caseId}
                     </span>
-                    <div>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate block">
                         {c.student?.studentIdentifier
                           ? `O‘quvchi #${c.student.studentIdentifier}`
                           : 'O‘quvchi'}
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 truncate block">
                         {new Date(c.createdAt).toLocaleDateString('uz-UZ', {
                           timeZone: 'Asia/Tashkent',
                           month: 'short',
@@ -514,10 +514,12 @@ export default function DashboardOverviewPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <CategoryBadge category={c.category} />
-                    <StatusBadge status={c.status} />
-                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800/60 shrink-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <CategoryBadge category={c.category} />
+                      <StatusBadge status={c.status} />
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors shrink-0" />
                   </div>
                 </Link>
               ))}

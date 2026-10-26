@@ -45,7 +45,10 @@ export class StatisticsService {
         FROM scoped
       `,
       this.prisma.user.count({
-        where: { role: UserRole.STUDENT },
+        where: {
+          role: UserRole.STUDENT,
+          conversations: admin ? undefined : { some: { recipientRoleId: roleId } },
+        },
       }),
       this.prisma.$queryRaw<{ category: string; count: number }[]>`
         SELECT category, COUNT(*)::int as count

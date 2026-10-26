@@ -242,7 +242,7 @@ export default function SettingsPage() {
                   Yangi lavozim nomi
                 </label>
                 <input
-                  className="w-full rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-4 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB] transition-all"
+                  className="w-full rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-4 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB] transition-all"
                   value={roleName}
                   onChange={(event) => setRoleName(event.target.value)}
                   maxLength={60}
@@ -261,7 +261,7 @@ export default function SettingsPage() {
           </section>
 
           {/* Card 2: Xodim qo‘shish */}
-          <section className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 p-6 shadow-xs space-y-4">
+          <section className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 p-4 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-900/60 flex items-center justify-center text-[#2563EB] dark:text-blue-400">
                 <UserPlus className="w-4 h-4" />
@@ -286,7 +286,7 @@ export default function SettingsPage() {
                   Xodim ismi
                 </label>
                 <input
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
                   placeholder="Masalan: Dilnoza Karimova"
                   {...form.register('displayName')}
                   autoComplete="name"
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                   Lavozimi
                 </label>
                 <select
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
                   {...form.register('staffRoleId')}
                 >
                   <option value="">Tanlang</option>
@@ -315,7 +315,7 @@ export default function SettingsPage() {
                   Telegram ID
                 </label>
                 <input
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
                   placeholder="Masalan: 123456789"
                   {...form.register('telegramId')}
                   inputMode="numeric"
@@ -331,7 +331,7 @@ export default function SettingsPage() {
                   <span className="text-slate-400 font-normal">(veb-panel uchun)</span>
                 </label>
                 <input
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
                   placeholder="xodim@maktab.uz"
                   {...form.register('email')}
                   type="email"
@@ -345,7 +345,7 @@ export default function SettingsPage() {
                   <span className="text-slate-400 font-normal">(veb-panel uchun)</span>
                 </label>
                 <input
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/60 px-3.5 py-2 text-base sm:text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-[#2563EB]"
                   placeholder="Kamida 12 belgi"
                   {...form.register('password')}
                   type="password"
@@ -405,17 +405,17 @@ export default function SettingsPage() {
                   return (
                     <div
                       key={person.id}
-                      className="py-3.5 flex items-center justify-between gap-4"
+                      className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-xs shrink-0">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 font-bold text-xs shrink-0">
                           {initial}
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-slate-900 dark:text-white">
+                        <div className="min-w-0">
+                          <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
                             {person.displayName || person.email || 'Xodim'}
                           </p>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                             {person.staffRole?.name || 'Lavozimsiz'} ·{' '}
                             <span
                               className={`font-semibold ${
@@ -428,18 +428,20 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        disabled={toggleStaff.isPending}
-                        onClick={() => toggleStaff.mutate(person)}
-                        className={`rounded-full px-3.5 py-1.5 text-xs font-semibold border transition-all ${
-                          person.isActive
-                            ? 'border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
-                            : 'border-blue-200 dark:border-blue-900/50 text-[#2563EB] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'
-                        }`}
-                      >
-                        {person.isActive ? 'Kirishni to‘xtatish' : 'Kirishni ochish'}
-                      </button>
+                      <div className="flex items-center justify-end pt-1 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800/60">
+                        <button
+                          type="button"
+                          disabled={toggleStaff.isPending}
+                          onClick={() => toggleStaff.mutate(person)}
+                          className={`rounded-full px-3 py-1 text-[11px] font-semibold border transition-all ${
+                            person.isActive
+                              ? 'border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30'
+                              : 'border-blue-200 dark:border-blue-900/50 text-[#2563EB] dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'
+                          }`}
+                        >
+                          {person.isActive ? 'Kirishni to‘xtatish' : 'Kirishni ochish'}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}

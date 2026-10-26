@@ -91,7 +91,7 @@ export function ConversationList({
         <div className="flex flex-col md:flex-row items-center gap-2 sm:gap-3">
           {/* Search by Case ID */}
           <div className="relative w-full md:flex-1">
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 sm:top-3" />
             <input
               type="text"
               aria-label="Murojaat raqamini qidirish"
@@ -101,11 +101,11 @@ export function ConversationList({
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-8 pr-3 py-1.5 sm:py-2 text-xs rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] transition-all"
+              className="w-full pl-8 pr-3 py-2 text-base sm:text-xs rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] transition-all"
             />
           </div>
 
-          <div className="grid grid-cols-2 sm:flex items-center gap-1.5 sm:gap-2 w-full md:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:flex items-center gap-1.5 sm:gap-2 w-full md:w-auto">
             {/* Category Filter */}
             <select
               value={category}
@@ -114,7 +114,7 @@ export function ConversationList({
                 setPage(1);
               }}
               aria-label="Mavzu bo‘yicha saralash"
-              className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+              className="w-full px-2.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-base sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
             >
               <option value="ALL">Barcha mavzular</option>
               <option value={ConversationCategory.GENERAL}>Umumiy</option>
@@ -133,7 +133,7 @@ export function ConversationList({
                   setPage(1);
                 }}
                 aria-label="Holat bo‘yicha saralash"
-                className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+                className="w-full px-2.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-base sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
               >
                 <option value="ALL">Barcha holatlar</option>
                 <option value={ConversationStatus.UNANSWERED}>Kutilmoqda</option>
@@ -150,7 +150,9 @@ export function ConversationList({
                 setSortBy(e.target.value as 'newest' | 'oldest')
               }
               aria-label="Tartiblash"
-              className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+              className={`w-full px-2.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-base sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 ${
+                !initialStatus ? 'col-span-2 sm:col-span-1' : ''
+              }`}
             >
               <option value="newest">Eng yangi</option>
               <option value="oldest">Eng eski</option>

@@ -46,27 +46,32 @@ export function Navbar({ onToggleMobileMenu }: NavbarProps) {
     router.replace('/login');
   };
 
+  const isAdmin = user?.role === 'ADMIN';
   const isPrincipal = user?.staffRoleId === 'principal';
-  const roleName = isPrincipal ? 'Direktor' : 'Psixolog';
+  const roleName = isAdmin ? 'Admin' : isPrincipal ? 'Direktor' : 'Psixolog';
 
   return (
-    <header className="h-14 sm:h-16 bg-white dark:bg-[#0B0D13] text-slate-800 dark:text-white px-3 sm:px-6 flex items-center justify-between z-10 sticky top-0 shadow-xs border-b border-slate-200/80 dark:border-white/10 transition-colors duration-150">
+    <header className="h-14 sm:h-16 bg-white/90 dark:bg-[#0B0D13]/90 backdrop-blur-md text-slate-800 dark:text-white px-3 sm:px-6 flex items-center justify-between z-20 sticky top-0 shadow-xs border-b border-slate-200/80 dark:border-white/10 transition-colors duration-150">
       {/* Left: Mobile Menu Toggle + Role Indicator */}
       <div className="flex items-center gap-2 sm:gap-3">
         <button
           onClick={onToggleMobileMenu}
-          className="lg:hidden p-1.5 sm:p-2 rounded-lg text-slate-600 dark:text-white/80 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-white/80 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer active:scale-95"
           aria-label="Menyuni ochish"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         {/* Active Role Pill */}
-        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-bold transition-all ${
-          isPrincipal
-            ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300'
-            : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300'
-        }`}>
+        <div
+          className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-bold transition-all shadow-xs ${
+            isAdmin
+              ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-900/60 text-purple-700 dark:text-purple-300'
+              : isPrincipal
+              ? 'bg-blue-50 dark:bg-blue-950/60 border-blue-200 dark:border-blue-900/60 text-blue-700 dark:text-blue-300'
+              : 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-900/60 text-emerald-700 dark:text-emerald-300'
+          }`}
+        >
           {isPrincipal ? (
             <GraduationCap className="w-3.5 h-3.5 shrink-0" />
           ) : (

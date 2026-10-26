@@ -80,18 +80,18 @@ export default function StudentsPage() {
             {data?.data.map((student) => (
               <div
                 key={student.id}
-                className="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                className="p-3.5 sm:p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/60 flex items-center justify-center font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200/60 dark:border-blue-900/60 flex items-center justify-center font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 shrink-0">
                     #{student.studentIdentifier?.slice(-4) || '????'}
                   </div>
-                  <div>
-                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block truncate">
                       O‘quvchi #{student.studentIdentifier || 'S-????'}
                     </span>
-                    <span className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                      <Calendar className="w-3 h-3" />
+                    <span className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
+                      <Calendar className="w-3 h-3 shrink-0" />
                       <span>
                         Qo‘shilgan{' '}
                         {new Date(student.createdAt).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent',
@@ -104,8 +104,8 @@ export default function StudentsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                <div className="flex items-center justify-between sm:justify-end gap-2 pt-1.5 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800/60">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-semibold">
                     <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
                     <span>{student._count?.conversations || 0} ta murojaat</span>
                   </span>

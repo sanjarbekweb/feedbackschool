@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '@/components/sidebar';
 import { Navbar } from '@/components/navbar';
+import { MobileNav } from '@/components/mobile-nav';
 import { useRealtimeEvents } from '@/lib/sse';
 import { AnimatePresence, motion } from 'motion/react';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -19,6 +20,8 @@ export default function DashboardLayout({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobilePanelRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const pathname = usePathname();
+  const isConversationDetail = Boolean(pathname?.startsWith('/dashboard/conversations/'));
   const {
     data: currentUser,
     error,
@@ -135,10 +138,19 @@ export default function DashboardLayout({
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
         <Navbar onToggleMobileMenu={() => setMobileMenuOpen(!mobileMenuOpen)} />
-        <main className="flex-1 overflow-y-auto p-2.5 sm:p-5 md:p-8">
+        <main
+          className={`flex-1 overflow-y-auto ${
+            isConversationDetail
+              ? 'p-0 sm:p-5 md:p-8'
+              : 'p-2.5 sm:p-5 md:p-8 pb-20 lg:pb-8'
+          }`}
+        >
           {children}
         </main>
       </div>
+
+      {/* Apple-grade Mobile Bottom Tab Bar */}
+      <MobileNav />
     </div>
   );
 }
