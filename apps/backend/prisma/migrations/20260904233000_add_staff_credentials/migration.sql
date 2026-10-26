@@ -29,22 +29,48 @@ ALTER TABLE "users" VALIDATE CONSTRAINT "users_email_normalized_chk";
 
 -- The application uses a direct server-side PostgreSQL connection. Its private
 -- tables must not also be reachable through Supabase's public Data API roles.
-REVOKE ALL PRIVILEGES ON TABLE
-  public.users,
-  public.conversations,
-  public.messages,
-  public.audit_logs
-FROM anon, authenticated;
+-- These REVOKE statements are guarded so they work on non-Supabase Postgres too.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    REVOKE ALL PRIVILEGES ON TABLE
+      public.users, public.conversations, public.messages, public.audit_logs
+    FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    REVOKE ALL PRIVILEGES ON TABLE
+      public.users, public.conversations, public.messages, public.audit_logs
+    FROM authenticated;
+  END IF;
+END
+$$;
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
-  ON TABLES FROM anon, authenticated;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+      REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+      ON TABLES FROM anon;
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+      REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+      ON TABLES FROM authenticated;
+  END IF;
+END
+$$;
 
 -- Supabase's RLS auto-enable event trigger does not require public RPC access.
 DO $$
 BEGIN
   IF to_regprocedure('public.rls_auto_enable()') IS NOT NULL THEN
-    REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC, anon, authenticated;
+    REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM PUBLIC;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+      REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM anon;
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      REVOKE EXECUTE ON FUNCTION public.rls_auto_enable() FROM authenticated;
+    END IF;
   END IF;
 END
 $$;
