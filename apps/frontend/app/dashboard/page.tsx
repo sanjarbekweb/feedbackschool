@@ -177,76 +177,78 @@ export default function DashboardOverviewPage() {
       className="space-y-6 max-w-7xl mx-auto pb-10"
     >
       {/* ROW 1: 3 KPI Cards on the left + Donut Chart Card on the right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 sm:gap-6 items-stretch">
         {/* Left: 3 KPI Cards */}
-        <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="lg:col-span-2 grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-4">
           {/* Card 1: Total Students (Real DB Data) */}
           <Link
             href="/dashboard/students"
-            className="bg-white dark:bg-[#111420] rounded-2xl p-5 border border-slate-200/70 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            className="bg-white dark:bg-[#111420] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200/70 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800">
-                <Users className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300" />
               </div>
               <div>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 block leading-tight">
                   O‘quvchilar
                 </span>
-                <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                <span className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                   {studentCount}
                 </span>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-              <Activity className="w-3.5 h-3.5 text-[#1D4ED8]" />
-              <span>{totalCount} ta jami murojaat</span>
+            <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+              <Activity className="w-3 h-3 text-[#1D4ED8] shrink-0" />
+              <span className="truncate">{totalCount} ta murojaat</span>
             </div>
           </Link>
 
           {/* Card 2: Answered / Orders (Real DB Data) */}
           <Link
             href="/dashboard/answered"
-            className="bg-white dark:bg-[#111420] rounded-2xl p-5 border border-slate-200/70 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+            className="bg-white dark:bg-[#111420] rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200/70 dark:border-slate-800 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800">
-                <CheckCircle2 className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 shrink-0">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-slate-700 dark:text-slate-300" />
               </div>
               <div>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 block">
+                <span className="text-[11px] sm:text-xs font-medium text-slate-500 dark:text-slate-400 block leading-tight">
                   Javob berilgan
                 </span>
-                <span className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                <span className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                   {answeredCount}
                 </span>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{answeredPct}% Samaradorlik</span>
+            <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
+              <TrendingUp className="w-3 h-3 shrink-0" />
+              <span>{answeredPct}% natija</span>
             </div>
           </Link>
 
           {/* Card 3: Hero Electric Blue Card - Unanswered (Real DB Data) */}
           <Link
             href="/dashboard/unanswered"
-            className="bg-[#1D4ED8] text-white rounded-2xl p-5 shadow-lg shadow-blue-600/30 hover:bg-[#1E40AF] transition-all flex flex-col justify-between"
+            className="col-span-2 sm:col-span-1 bg-[#1D4ED8] text-white rounded-xl sm:rounded-2xl p-3.5 sm:p-5 shadow-md shadow-blue-600/30 hover:bg-[#1E40AF] transition-all flex flex-col justify-between"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full border border-white/40 flex items-center justify-center text-white bg-white/10">
-                <Clock className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <span className="text-xs font-semibold text-blue-100 block">
-                  Kutilayotganlar
-                </span>
-                <span className="text-2xl font-black text-white tracking-tight">
-                  {unansweredCount}
-                </span>
+            <div className="flex items-center justify-between sm:justify-start gap-2.5 sm:gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/40 flex items-center justify-center text-white bg-white/10 shrink-0">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                </div>
+                <div>
+                  <span className="text-[11px] sm:text-xs font-semibold text-blue-100 block leading-tight">
+                    Kutilayotganlar
+                  </span>
+                  <span className="text-lg sm:text-2xl font-black text-white tracking-tight">
+                    {unansweredCount}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-white/15 flex items-center gap-1.5 text-[11px] text-blue-200 font-medium">
+            <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-white/15 flex items-center gap-1 text-[10px] sm:text-[11px] text-blue-200 font-medium">
               <span>{recentActivity} ta so‘nggi 24 soatda</span>
             </div>
           </Link>

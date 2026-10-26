@@ -12,6 +12,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RoleLoginDto } from './dto/role-login.dto';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CurrentUser as CurrentUserType, ApiResponse } from '@psychology/types';
@@ -39,6 +40,34 @@ export class AuthController {
     });
 
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+    return {
+      success: true,
+      data: {
+        user,
+        token,
+        expiresAt,
+      },
+    };
+  }
+
+  @Post('role-login')
+  @HttpCode(HttpStatus.OK)
+  async roleLogin(
+    @Body() dto: RoleLoginDto,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<ApiResponse<{ user: CurrentUserType; token: string; expiresAt: string }>> {
+    const { user, token } = await this.authService.roleLogin(dto.roleId);
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    response.cookie('access_token', token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
     return {
       success: true,

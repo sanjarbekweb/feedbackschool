@@ -59,4 +59,66 @@ export class AuthService {
       token,
     };
   }
+
+  async roleLogin(roleId: 'principal' | 'psychologist'): Promise<{ user: CurrentUser; token: string }> {
+    if (roleId !== 'principal' && roleId !== 'psychologist') {
+      throw new UnauthorizedException('Noto‘g‘ri lavozim tanlandi.');
+    }
+
+    // Ensure the staff role exists in database
+    await this.prisma.staffRole.upsert({
+      where: { id: roleId },
+      update: { isActive: true },
+      create: {
+        id: roleId,
+        name: roleId === 'principal' ? 'Direktor' : 'Psixolog',
+        isActive: true,
+      },
+    });
+
+    // Find or create default user for this role
+    let user = await this.prisma.user.findFirst({
+      where: { staffRoleId: roleId, role: UserRole.STAFF, isActive: true },
+    });
+
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          role: UserRole.STAFF,
+          staffRoleId: roleId,
+          displayName: roleId === 'principal' ? 'Direktor' : 'Psixolog',
+          email: `${roleId}@maktab.uz`,
+          isActive: true,
+        },
+      });
+    }
+
+    const payload = {
+      sub: user.id,
+      role: user.role,
+      credentialVersion: user.credentialVersion,
+    };
+    const token = this.jwtService.sign(payload);
+
+    await this.auditService.record({
+      actorId: user.id,
+      action: 'STAFF_ROLE_LOGIN',
+      targetType: 'USER',
+      targetId: user.id,
+      metadata: { method: 'DIRECT_ROLE_SELECTION', roleId },
+    });
+
+    return {
+      user: {
+        id: user.id,
+        telegramId: user.telegramId,
+        email: user.email,
+        role: user.role,
+        staffRoleId: user.staffRoleId,
+        displayName: user.displayName,
+        studentIdentifier: user.studentIdentifier,
+      },
+      token,
+    };
+  }
 }

@@ -87,25 +87,25 @@ export function ConversationList({
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs p-4 space-y-3">
-        <div className="flex flex-col md:flex-row items-center gap-3">
+      <div className="bg-white dark:bg-[#111420] rounded-xl sm:rounded-2xl border border-slate-200/70 dark:border-slate-800 shadow-xs p-3 sm:p-4 space-y-2.5 sm:space-y-3">
+        <div className="flex flex-col md:flex-row items-center gap-2 sm:gap-3">
           {/* Search by Case ID */}
-          <div className="relative flex-1 w-full">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5" />
+          <div className="relative w-full md:flex-1">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
               aria-label="Murojaat raqamini qidirish"
-              placeholder="Murojaat raqamini qidirish (#A81F42)…"
+              placeholder="Qidirish (#A81F42)…"
               value={search}
               onChange={(e) => {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-9 pr-4 py-2 text-xs rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] transition-all"
+              className="w-full pl-8 pr-3 py-1.5 sm:py-2 text-xs rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25 focus:border-[#2563EB] transition-all"
             />
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto flex-wrap">
+          <div className="grid grid-cols-2 sm:flex items-center gap-1.5 sm:gap-2 w-full md:w-auto">
             {/* Category Filter */}
             <select
               value={category}
@@ -114,14 +114,14 @@ export function ConversationList({
                 setPage(1);
               }}
               aria-label="Mavzu bo‘yicha saralash"
-              className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+              className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
             >
               <option value="ALL">Barcha mavzular</option>
-              <option value={ConversationCategory.GENERAL}>Umumiy savol</option>
+              <option value={ConversationCategory.GENERAL}>Umumiy</option>
               <option value={ConversationCategory.ACADEMIC}>O‘qish</option>
-              <option value={ConversationCategory.PERSONAL}>Shaxsiy masala</option>
-              <option value={ConversationCategory.SOCIAL}>Munosabatlar</option>
-              <option value={ConversationCategory.URGENT}>Shoshilinch yordam</option>
+              <option value={ConversationCategory.PERSONAL}>Shaxsiy</option>
+              <option value={ConversationCategory.SOCIAL}>Munosabat</option>
+              <option value={ConversationCategory.URGENT}>Shoshilinch</option>
             </select>
 
             {/* Status Filter */}
@@ -133,13 +133,13 @@ export function ConversationList({
                   setPage(1);
                 }}
                 aria-label="Holat bo‘yicha saralash"
-                className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+                className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
               >
                 <option value="ALL">Barcha holatlar</option>
-                <option value={ConversationStatus.UNANSWERED}>⏳ Javob kutilmoqda</option>
-                <option value={ConversationStatus.IN_PROGRESS}>💬 Ko‘rib chiqilmoqda</option>
-                <option value={ConversationStatus.ANSWERED}>✅ Javob berilgan</option>
-                <option value={ConversationStatus.CLOSED}>🔒 Yopilgan</option>
+                <option value={ConversationStatus.UNANSWERED}>Kutilmoqda</option>
+                <option value={ConversationStatus.IN_PROGRESS}>Jarayonda</option>
+                <option value={ConversationStatus.ANSWERED}>Javob berilgan</option>
+                <option value={ConversationStatus.CLOSED}>Yopilgan</option>
               </select>
             )}
 
@@ -150,10 +150,10 @@ export function ConversationList({
                 setSortBy(e.target.value as 'newest' | 'oldest')
               }
               aria-label="Tartiblash"
-              className="px-3.5 py-2 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
+              className="w-full px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-[#2563EB]/25"
             >
-              <option value="newest">Avval yangilari</option>
-              <option value="oldest">Avval eskilari</option>
+              <option value="newest">Eng yangi</option>
+              <option value="oldest">Eng eski</option>
             </select>
           </div>
         </div>
@@ -193,32 +193,27 @@ export function ConversationList({
                 <Link
                   key={conv.id}
                   href={`/dashboard/conversations/${conv.id}`}
-                  className={`p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+                  className={`p-3 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
                     isUnanswered
                       ? 'bg-blue-50/20 dark:bg-blue-950/20 hover:bg-blue-50/50 dark:hover:bg-blue-950/40'
                       : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                   }`}
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <span className="font-mono font-bold text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2.5 py-1 rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono font-bold text-[11px] sm:text-xs text-[#1D4ED8] dark:text-blue-400 bg-blue-50 dark:bg-blue-950/60 px-2 py-0.5 rounded-md">
                         {conv.caseId}
                       </span>
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      <span className="text-[11px] sm:text-xs font-bold text-slate-800 dark:text-slate-200">
                         {conv.student?.studentIdentifier
                           ? `O‘quvchi #${conv.student.studentIdentifier}`
                           : 'O‘quvchi'}
                       </span>
                       <CategoryBadge category={conv.category} />
-                      {isUnanswered && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-100/70 dark:bg-blue-900/50 px-2.5 py-0.5 rounded-full">
-                          Javob kutilmoqda
-                        </span>
-                      )}
                     </div>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-3">
+
+                    <div className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-2 flex-wrap">
                       <span>
-                        Ochilgan{' '}
                         {new Date(conv.createdAt).toLocaleDateString('uz-UZ', { timeZone: 'Asia/Tashkent',
                           month: 'short',
                           day: 'numeric',
@@ -232,7 +227,6 @@ export function ConversationList({
                         <>
                           <span>•</span>
                           <span>
-                            So‘nggi xabar{' '}
                             {new Date(conv.lastMessageAt).toLocaleTimeString('uz-UZ', { timeZone: 'Asia/Tashkent',
                               hour: '2-digit',
                               minute: '2-digit',
@@ -243,9 +237,9 @@ export function ConversationList({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 self-end sm:self-center">
+                  <div className="flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t sm:border-0 border-slate-100 dark:border-slate-800/50">
                     <StatusBadge status={conv.status} />
-                    <ChevronRight className="w-4 h-4 text-slate-300 dark:text-slate-600" />
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 dark:text-slate-600" />
                   </div>
                 </Link>
               );

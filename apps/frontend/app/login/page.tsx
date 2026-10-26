@@ -1,53 +1,30 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { motion } from 'motion/react';
-import { ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, Loader2, Sun, Moon } from 'lucide-react';
+import { GraduationCap, Brain, ArrowRight, AlertCircle, Loader2, Sun, Moon, ShieldCheck } from 'lucide-react';
 import { apiClient, ApiError, setAuthToken } from '@/lib/api';
 import { useTheme } from '@/components/theme-provider';
 
-const loginSchema = z.object({
-  email: z.string().email('Elektron pochtani to‘g‘ri kiriting'),
-  password: z.string().min(6, 'Parol kamida 6 belgidan iborat bo‘lsin'),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
 export default function LoginPage() {
   const [serverError, setServerError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingRole, setLoadingRole] = useState<'principal' | 'psychologist' | null>(null);
   const { theme, toggleTheme } = useTheme();
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
-
-  const onSubmit = async (data: LoginFormData) => {
+  const handleRoleLogin = async (roleId: 'principal' | 'psychologist') => {
     setServerError(null);
-    setIsLoading(true);
+    setLoadingRole(roleId);
 
     try {
-      const response = await apiClient<{ token?: string }>('/api/auth/login', {
+      const response = await apiClient<{ token?: string }>('/api/auth/role-login', {
         method: 'POST',
-        body: JSON.stringify(data),
+        body: JSON.stringify({ roleId }),
       });
 
       if (response?.token) {
         setAuthToken(response.token);
       }
 
-      // Successful login - redirect to dashboard
       window.location.href = '/dashboard';
     } catch (err) {
       if (err instanceof ApiError) {
@@ -55,21 +32,20 @@ export default function LoginPage() {
       } else {
         setServerError('Ulanib bo‘lmadi. Qayta urinib ko‘ring.');
       }
-    } finally {
-      setIsLoading(false);
+      setLoadingRole(null);
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center px-4 sm:px-6 bg-[#F1F4F9] dark:bg-[#090B11] text-slate-900 dark:text-slate-100 transition-colors duration-150 relative">
+    <div className="min-h-screen flex flex-col justify-center items-center px-3 sm:px-6 bg-[#F1F4F9] dark:bg-[#090B11] text-slate-900 dark:text-slate-100 transition-colors duration-150 relative py-6">
       {/* Top Bar Theme Toggle */}
-      <div className="absolute top-5 right-5 sm:top-8 sm:right-8">
+      <div className="absolute top-4 right-4 sm:top-8 sm:right-8">
         <button
           type="button"
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? 'Yorug‘ rejimga o‘tish' : 'Qorong‘i rejimga o‘tish'}
           title={theme === 'dark' ? 'Yorug‘ rejim' : 'Qorong‘i rejim'}
-          className="p-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111420] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-xs transition-colors cursor-pointer"
+          className="p-2 sm:p-2.5 rounded-full border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#111420] text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white shadow-xs transition-colors cursor-pointer"
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4 text-amber-400" />
@@ -80,31 +56,31 @@ export default function LoginPage() {
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 12 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
-        className="w-full max-w-md"
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="w-full max-w-sm sm:max-w-md"
       >
         {/* Header Branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0A0A0C] text-white mb-4 shadow-md border border-slate-800">
-            <span className="text-sm font-black tracking-widest text-[#2563EB]">LOGO</span>
+        <div className="text-center mb-5 sm:mb-7">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-blue-700 to-indigo-600 text-white mb-3 shadow-md">
+            <GraduationCap className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-            Xodimlar paneli
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            Maktab boshqaruv paneli
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
-            Maktab psixologik yordam xizmati boshqaruv tizimi
+          <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">
+            Murojaatlarni ko‘rish uchun o‘z lavozimingizni tanlang
           </p>
         </div>
 
-        {/* Login Surface Card */}
-        <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none p-6 sm:p-8 transition-colors">
+        {/* Surface Card with Role Choice */}
+        <div className="bg-white dark:bg-[#111420] rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-lg shadow-slate-200/40 dark:shadow-none p-4 sm:p-6 transition-colors space-y-3 sm:space-y-4">
           {serverError && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mb-5 p-3.5 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-3"
+              className="p-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 flex items-start gap-2.5"
             >
               <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
               <div className="text-xs text-red-700 dark:text-red-300 font-semibold leading-relaxed">
@@ -113,97 +89,84 @@ export default function LoginPage() {
             </motion.div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email Field */}
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5"
-              >
-                Elektron pochta
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-                  <Mail className="h-4 w-4" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="admin@school.uz"
-                  {...register('email')}
-                  className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-full border bg-slate-50/50 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                    errors.email
-                      ? 'border-red-400 dark:border-red-500 focus:border-red-500'
-                      : 'border-slate-200 dark:border-slate-800 focus:border-[#2563EB]'
-                  }`}
-                />
+          {/* Role Button 1: Direktor */}
+          <motion.button
+            type="button"
+            disabled={Boolean(loadingRole)}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.985 }}
+            onClick={() => handleRoleLogin('principal')}
+            className="w-full text-left p-3.5 sm:p-4 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-blue-500 dark:hover:border-blue-500 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-blue-50/40 dark:hover:bg-blue-950/30 transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <GraduationCap className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              {errors.email && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">{errors.email.message}</p>
-              )}
+              <div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  Direktor
+                  <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-100/70 dark:bg-blue-900/50 px-2 py-0.5 rounded-full">
+                    Kabinet
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                  Faqat direktorga yozilgan murojaatlar
+                </p>
+              </div>
             </div>
 
-            {/* Password Field */}
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5"
-              >
-                Parol
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 dark:text-slate-500">
-                  <Lock className="h-4 w-4" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••••••"
-                  {...register('password')}
-                  className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-full border bg-slate-50/50 dark:bg-slate-900/60 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20 ${
-                    errors.password
-                      ? 'border-red-400 dark:border-red-500 focus:border-red-500'
-                      : 'border-slate-200 dark:border-slate-800 focus:border-[#2563EB]'
-                  }`}
-                />
-              </div>
-              {errors.password && (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium">{errors.password.message}</p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <motion.button
-              type="submit"
-              disabled={isLoading}
-              whileHover={{ scale: 1.01 }}
-              whileTap={{ scale: 0.985 }}
-              className="w-full mt-3 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-full bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold text-xs transition-all shadow-md shadow-blue-600/30 disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Tekshirilmoqda…</span>
-                </>
+            <div className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 pl-2 shrink-0">
+              {loadingRole === 'principal' ? (
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
               ) : (
-                <>
-                  <span>Tizimga kirish</span>
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               )}
-            </motion.button>
-          </form>
+            </div>
+          </motion.button>
+
+          {/* Role Button 2: Psixolog */}
+          <motion.button
+            type="button"
+            disabled={Boolean(loadingRole)}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.985 }}
+            onClick={() => handleRoleLogin('psychologist')}
+            className="w-full text-left p-3.5 sm:p-4 rounded-xl border-2 border-slate-200 dark:border-slate-800 hover:border-emerald-500 dark:hover:border-emerald-500 bg-slate-50/60 dark:bg-slate-900/40 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 transition-all flex items-center justify-between group disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <Brain className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  Psixolog
+                  <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-900/50 px-2 py-0.5 rounded-full">
+                    Kabinet
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5">
+                  Faqat psixologga yozilgan murojaatlar
+                </p>
+              </div>
+            </div>
+
+            <div className="text-slate-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 pl-2 shrink-0">
+              {loadingRole === 'psychologist' ? (
+                <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+              ) : (
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              )}
+            </div>
+          </motion.button>
 
           {/* Privacy Note */}
-          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 text-center">
-            <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-1">
-              <ShieldCheck className="w-4 h-4 text-[#2563EB]" />
-              <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300">Xavfsiz va maxfiy</span>
+          <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-slate-400 mb-0.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">Maxfiy va alohida ajratilgan</span>
             </div>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
-              Murojaatlar faqat ruxsat etilgan xodimlarga ko‘rinadi. Barcha harakatlar qayd etiladi.
+            <p className="text-[10px] text-slate-400 leading-normal">
+              Direktor psixologning murojaatlarini ko‘rmaydi, psixolog esa direktorning murojaatlarini ko‘ra olmaydi.
             </p>
           </div>
         </div>
