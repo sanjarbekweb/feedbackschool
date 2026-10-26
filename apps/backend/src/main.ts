@@ -86,7 +86,7 @@ async function bootstrap() {
   });
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   const logger = app.get(Logger);
   logger.log(`Psychology Support API running on http://localhost:${port}/api`);
   logger.log(`Health check ready at http://localhost:${port}/api/health`);
