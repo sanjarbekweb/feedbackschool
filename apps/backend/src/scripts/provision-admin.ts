@@ -57,11 +57,22 @@ async function readSecret(prompt: string): Promise<string> {
 }
 
 async function main(): Promise<void> {
-  const input = createInterface({ input: stdin, output: stdout });
+  const envEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const envPassword = process.env.ADMIN_PASSWORD;
 
-  const email = (await input.question('Admin email: ')).trim().toLowerCase();
-  input.close();
-  const password = await readSecret('Admin password: ');
+  let email = envEmail;
+  let password = envPassword;
+
+  if (!email || !password) {
+    if (!stdin.isTTY && typeof stdin.setRawMode !== 'function') {
+      stdout.write('ADMIN_EMAIL and ADMIN_PASSWORD not configured; skipping admin auto-provisioning.\n');
+      return;
+    }
+    const input = createInterface({ input: stdin, output: stdout });
+    email = (await input.question('Admin email: ')).trim().toLowerCase();
+    input.close();
+    password = await readSecret('Admin password: ');
+  }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error('A valid admin email is required.');
