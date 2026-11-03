@@ -25,6 +25,7 @@ import { CreateConversationDto } from './dto/create-conversation.dto';
 import { UpdateConversationDto } from './dto/update-conversation.dto';
 import { ConversationFilterDto } from './dto/conversation-filter.dto';
 import { InMemoryCacheService } from '../common/cache/in-memory-cache.service';
+import { VALID_ROLE_IDS, STAFF_ROLES, StaffRoleId } from '../auth/dto/role-login.dto';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -80,16 +81,30 @@ export class ConversationsService {
       if (existing && existing.senderId === studentUser.id) return existing.conversation;
     }
     const recipientRoleId = dto.recipientRoleId || 'psychologist';
-    const recipient = await this.prisma.staffRole.findFirst({
+    let recipient = await this.prisma.staffRole.findFirst({
       where: {
         id: recipientRoleId,
         isActive: true,
         OR: [
           { users: { some: { role: { in: [UserRole.STAFF, UserRole.ADMIN] }, isActive: true } } },
-          { id: { in: ['psychologist', 'principal'] } },
+          { id: { in: VALID_ROLE_IDS } },
         ],
       },
     });
+
+    // Auto-create standard role if not yet present
+    if (!recipient && (VALID_ROLE_IDS as readonly string[]).includes(recipientRoleId)) {
+      recipient = await this.prisma.staffRole.upsert({
+        where: { id: recipientRoleId },
+        update: { isActive: true },
+        create: {
+          id: recipientRoleId,
+          name: STAFF_ROLES[recipientRoleId as StaffRoleId],
+          isActive: true,
+        },
+      });
+    }
+
     if (!recipient) throw new BadRequestException('Qabul qiluvchi hozir mavjud emas.');
     const caseId = this.generateCaseId();
 

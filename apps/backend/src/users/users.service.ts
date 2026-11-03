@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { CurrentUser } from '@psychology/types';
 import { conversationScope } from '../common/conversation-access';
 import { CreateStaffDto } from './staff.dto';
+import { VALID_ROLE_IDS } from '../auth/dto/role-login.dto';
 import { Injectable, BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { PaginatedResponse, StudentDirectoryItem, UserRole } from '@psychology/types';
 import { PrismaService } from '../database/prisma.service';
@@ -142,7 +143,7 @@ export class UsersService {
             isActive: true,
             OR: [
               { users: { some: { isActive: true, role: { in: [UserRole.STAFF, UserRole.ADMIN] } } } },
-              { id: { in: ['psychologist', 'principal'] } },
+              { id: { in: VALID_ROLE_IDS } },
             ],
           }
         : {},

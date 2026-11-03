@@ -142,6 +142,29 @@ describe('AuthService', () => {
       );
     });
 
+    it('authenticates a new counselor role user', async () => {
+      prisma.staffRole.upsert.mockResolvedValue({ id: 'counselor', name: 'Maktab maslahatchi', isActive: true });
+      prisma.user.findFirst.mockResolvedValue(null);
+      prisma.user.create.mockResolvedValue({
+        id: 'counselor-uuid',
+        telegramId: null,
+        email: 'counselor@maktab.uz',
+        role: UserRole.STAFF,
+        staffRoleId: 'counselor',
+        displayName: 'Maktab maslahatchi',
+        studentIdentifier: null,
+        credentialVersion: 1,
+        isActive: true,
+      });
+
+      const res = await service.roleLogin('counselor');
+
+      expect(res.user.role).toBe(UserRole.STAFF);
+      expect(res.user.staffRoleId).toBe('counselor');
+      expect(res.user.displayName).toBe('Maktab maslahatchi');
+      expect(res.token).toBe('mock-jwt-token');
+    });
+
     it('rejects an invalid role string', async () => {
       await expect(service.roleLogin('invalid' as any)).rejects.toThrow(UnauthorizedException);
     });

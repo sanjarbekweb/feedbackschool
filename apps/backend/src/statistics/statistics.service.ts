@@ -83,11 +83,19 @@ export class StatisticsService {
       }
     }
 
-    const dutyRole = dutyStaff
-      ? dutyStaff.users[0]?.displayName
+    let dutyRole = 'Psixolog';
+    if (actor?.staffRoleId) {
+      const activeRole = await this.prisma.staffRole.findUnique({
+        where: { id: actor.staffRoleId },
+      });
+      if (activeRole) {
+        dutyRole = actor.displayName ? `${activeRole.name} (${actor.displayName})` : activeRole.name;
+      }
+    } else if (dutyStaff) {
+      dutyRole = dutyStaff.users[0]?.displayName
         ? `${dutyStaff.name} (${dutyStaff.users[0].displayName})`
-        : dutyStaff.name
-      : 'Psixolog';
+        : dutyStaff.name;
+    }
 
     const result: DashboardStatistics = {
       ...row,

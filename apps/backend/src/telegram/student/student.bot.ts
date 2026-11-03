@@ -25,6 +25,16 @@ const CATEGORY_LABELS: Record<string, string> = {
   URGENT: 'Shoshilinch yordam',
 };
 
+const ROLE_EMOJIS: Record<string, string> = {
+  principal: '🎓',
+  psychologist: '🧠',
+  counselor: '💬',
+  mmibdo: '📚',
+  otibdo: '👥',
+};
+
+const PREFERRED_ROLE_ORDER = ['principal', 'psychologist', 'counselor', 'mmibdo', 'otibdo'];
+
 export class StudentBotController {
   private readonly logger = new Logger(StudentBotController.name);
   private readonly sessions = new Map<number, StudentSessionData>();
@@ -340,8 +350,21 @@ export class StudentBotController {
       });
       return;
     }
+
+    const sortedRoles = [...roles].sort((a, b) => {
+      const idxA = PREFERRED_ROLE_ORDER.indexOf(a.id);
+      const idxB = PREFERRED_ROLE_ORDER.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
     const keyboard = new InlineKeyboard();
-    for (const role of roles) keyboard.text(role.name, `recipient:${role.id}`).row();
+    for (const role of sortedRoles) {
+      const emoji = ROLE_EMOJIS[role.id] ? `${ROLE_EMOJIS[role.id]} ` : '👤 ';
+      keyboard.text(`${emoji}${role.name}`, `recipient:${role.id}`).row();
+    }
     keyboard.text('❌ Bekor qilish', 'student:cancel');
 
     await this.renderResponse(ctx, 'Kimga yozmoqchisiz?', {

@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRole, CurrentUser } from '@psychology/types';
 import { PrismaService } from '../database/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { STAFF_ROLES, StaffRoleId, VALID_ROLE_IDS } from './dto/role-login.dto';
 import { AuditService } from '../audit/audit.service';
 import * as bcrypt from 'bcryptjs';
 
@@ -30,7 +31,7 @@ export class AuthService {
       !user.isActive ||
       (user.role !== UserRole.STAFF && user.role !== UserRole.ADMIN)
     ) {
-      throw new UnauthorizedException('Pochta yoki parol noto‘g‘ri.');
+      throw new UnauthorizedException('Pochta yoki parol noto\u2018g\u2018ri.');
     }
 
     const payload = {
@@ -60,10 +61,12 @@ export class AuthService {
     };
   }
 
-  async roleLogin(roleId: 'principal' | 'psychologist'): Promise<{ user: CurrentUser; token: string }> {
-    if (roleId !== 'principal' && roleId !== 'psychologist') {
-      throw new UnauthorizedException('Noto‘g‘ri lavozim tanlandi.');
+  async roleLogin(roleId: StaffRoleId): Promise<{ user: CurrentUser; token: string }> {
+    if (!VALID_ROLE_IDS.includes(roleId)) {
+      throw new UnauthorizedException('Noto\u2018g\u2018ri lavozim tanlandi.');
     }
+
+    const roleName = STAFF_ROLES[roleId];
 
     // Ensure the staff role exists in database
     await this.prisma.staffRole.upsert({
@@ -71,7 +74,7 @@ export class AuthService {
       update: { isActive: true },
       create: {
         id: roleId,
-        name: roleId === 'principal' ? 'Direktor' : 'Psixolog',
+        name: roleName,
         isActive: true,
       },
     });
@@ -86,7 +89,7 @@ export class AuthService {
         data: {
           role: UserRole.STAFF,
           staffRoleId: roleId,
-          displayName: roleId === 'principal' ? 'Direktor' : 'Psixolog',
+          displayName: roleName,
           email: `${roleId}@maktab.uz`,
           isActive: true,
         },
